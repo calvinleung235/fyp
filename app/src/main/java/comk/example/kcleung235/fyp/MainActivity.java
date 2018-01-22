@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         ImageView img = (ImageView) findViewById(R.id.img);
         img.setImageBitmap(resultBitmap);
 
+
 //        // Don't do that at home or work it's for visualization purpose.
 //        BitmapHelper.showBitmap(this, bitmap, imageView);
 //        BitmapHelper.showBitmap(this, resultBitmap, detectEdgesImageView);

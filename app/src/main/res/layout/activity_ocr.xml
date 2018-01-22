@@ -8,19 +8,19 @@
     tools:context=".OcrActivity"
     android:weightSum="1">
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="332dp"
-        android:background="#ffffff"
-        android:id="@+id/ImageContainer">
+    <!--<RelativeLayout-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="332dp"-->
+        <!--android:background="#ffffff"-->
+        <!--android:id="@+id/ImageContainer">-->
 
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/imageView"
-            android:src="@drawable/test_image"/>
+        <!--<ImageView-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="match_parent"-->
+            <!--android:id="@+id/imageView"-->
+            <!--android:src="@drawable/test_image"/>-->
 
-    </RelativeLayout>
+    <!--</RelativeLayout>-->
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -46,7 +46,7 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="42dp"
         android:background="#e4e3e3"
         android:id="@+id/OCRTextContainer">
 
@@ -56,6 +56,22 @@
             android:text="OCR Text will appear here"
             android:id="@+id/OCRTextView"
             android:textSize="18dp"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true"
+            android:background="#dedede"
+            android:textColor="#a3a3a3" />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#e4e3e3"
+        android:id="@+id/RectContainer">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/rect"
             android:layout_centerVertical="true"
             android:layout_centerHorizontal="true"
             android:background="#dedede"
