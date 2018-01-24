@@ -17,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.googlecode.leptonica.android.Pixa;
+import com.googlecode.tesseract.android.ResultIterator;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import org.opencv.android.OpenCVLoader;
@@ -27,6 +28,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
@@ -35,6 +37,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 public class OcrActivity extends AppCompatActivity {
 
@@ -48,7 +51,9 @@ public class OcrActivity extends AppCompatActivity {
         setContentView(R.layout.activity_ocr);
 
         //init image
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.book_img);
+        image = BitmapFactory.decodeResource(getResources(), R.drawable.test);
+        ImageView srcImage = (ImageView) findViewById(R.id.srcImage);
+        srcImage.setImageBitmap(image);
 
         //initialize Tesseract API
         String language = "eng";
@@ -61,45 +66,118 @@ public class OcrActivity extends AppCompatActivity {
 
         OpenCVLoader.initDebug();
         drawRect(image);
+
     }
 
-    public void processImage(View view){
+    public void runOCR(View view){
         String OCRresult = null;
         mTess.setImage(image);
         OCRresult = mTess.getUTF8Text();
         TextView OCRTextView = (TextView) findViewById(R.id.OCRTextView);
-        Rect rect = mTess.getTextlines().getBox(0).getRect();
-        int x = rect.bottom;
-        int y = image.getHeight();
-        OCRTextView.setText(String.valueOf(x));
+        ResultIterator ri = mTess.getResultIterator();
+        String t = ri.getUTF8Text(1);
+        OCRTextView.setText(String.valueOf(OCRresult));
     }
 
     public void drawRect(Bitmap src){
-        mTess.setImage(src);
-        Mat source = new Mat();
-        Utils.bitmapToMat(src, source);
 
-        Mat destination = new Mat(source.size(), CvType.CV_8UC3);
-        Imgproc.cvtColor(source, destination, Imgproc.COLOR_RGB2GRAY, 4);
-//        Imgproc.medianBlur(source, destination, 15);
-//        Bitmap bitmapForTess = Bitmap.createBitmap(src.getWidth(), src.getHeight(), Bitmap.Config.ARGB_8888);
-//        Utils.matToBitmap(destination, bitmapForTess);
-//
-//        mTess.setImage(bitmapForTess);
+        Bitmap bitmapForTess = sharpenImage(src);
 
-        Rect rect = rect = mTess.getTextlines().getBox(0).getRect();
-        Point top_left = new Point(rect.left, rect.top);
-        Point bottom_right = new Point(rect.right, rect.bottom);
+        Mat mat_with_rect = new Mat(bitmapForTess.getHeight(), bitmapForTess.getWidth(), Imgproc.COLOR_RGB2GRAY);
 
-        Imgproc.rectangle(destination, top_left, bottom_right, new Scalar(255,255,255), 8);
+        Utils.bitmapToMat(bitmapForTess, mat_with_rect);
 
-        Bitmap result_bitmap = Bitmap.createBitmap(src.getWidth(), src.getHeight(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(destination, result_bitmap);
+        mTess.setImage(bitmapForTess);
+
+        Point top_left3 = new Point(0,0);
+        Point bottom_right3 = new Point(0,0);
+        double[] x = new double[2];
+        double[] y = new double[2];
+
+        ArrayList<Rect> rectArrayList = mTess.getWords().getBoxRects();
+
+        int s = mTess.getWords().getBox(1).hashCode();
+        String j = mTess.getResultIterator().getUTF8Text(s);
+        TextView OCRTextView = (TextView) findViewById(R.id.OCRTextView);
+        OCRTextView.setText(j);
+
+        for (Rect rects : rectArrayList ){
+            x[0] = rects.left;
+            x[1] = rects.top;
+            y[0] = rects.right;
+            y[1] = rects.bottom;
+            top_left3.set(x);
+            bottom_right3.set(y);
+//            Imgproc.rectangle(mat_with_rect, top_left3, bottom_right3, new Scalar(255,255,255),0);
+        }
+
+        Bitmap bitmap_with_rect = Bitmap.createBitmap(mat_with_rect.cols(), mat_with_rect.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat_with_rect, bitmap_with_rect);
 
         ImageView imageView = (ImageView) findViewById(R.id.rect);
-        imageView.setImageBitmap(result_bitmap);
+        imageView.setImageBitmap(bitmap_with_rect);
+
     }
 
+    public Bitmap sharpenImage(Bitmap src){
+
+        Mat source = new Mat(src.getHeight(), src.getWidth(), CvType.CV_32F);
+        Utils.bitmapToMat(src, source);
+        Imgproc.cvtColor(source, source, Imgproc.COLOR_RGB2GRAY);
+
+        Mat blurred_mat = new Mat(source.size(), CvType.CV_8UC1);
+        Mat destination = new Mat(source.size(), CvType.CV_32F);
+
+        //GaussianBlur
+//        Size kSize = new Size(3,3);
+//        Imgproc.GaussianBlur(source, blurred_mat, kSize,2, 2);
+
+        Mat kernel = new Mat(3,3, CvType.CV_32F){
+            {
+                put(0,0,-1);
+                put(0,1,-1);
+                put(0,2,-1);
+
+                put(1,0,-1);
+                put(1,1,9);
+                put(1,2,-1);
+
+                put(2,0,-1);
+                put(2,1,-1);
+                put(2,2,-1);
+            }
+        };
+
+        Imgproc.threshold(source, destination, 42, 255, Imgproc.THRESH_BINARY|Imgproc.THRESH_OTSU);
+
+//        Imgproc.filter2D(blurred_mat, destination, -1, kernel);
+
+//        destination = enhanceConstrast(destination);
+
+        Bitmap result = Bitmap.createBitmap(destination.cols(), destination.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(destination, result);
+
+        return result;
+    }
+
+    public Mat enhanceConstrast(Mat src){
+
+        Mat source = src;
+
+        Mat destination = new Mat(source.size(), source.type());
+        //sharpen processing
+
+        Imgproc.equalizeHist(source, destination);
+
+        Bitmap result = Bitmap.createBitmap(destination.cols(), destination.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(destination, result);
+
+        ImageView iv = (ImageView) findViewById(R.id.median);
+        iv.setImageBitmap(result);
+
+        return  destination;
+
+    }
 
     private void checkFile(File dir) {
         if (!dir.exists()&& dir.mkdirs()){
