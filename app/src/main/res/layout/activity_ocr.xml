@@ -49,7 +49,7 @@
                     android:onClick="runOCR"/>
             </RelativeLayout>
 
-
+            <!-- OCR text -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
@@ -68,31 +68,32 @@
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
-            <!--<RelativeLayout-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="150dp"-->
-                <!--android:background="#e4e3e3"-->
-                <!--android:id="@+id/srcContainer">-->
-
-                <!--<ImageView-->
-                    <!--android:layout_width="wrap_content"-->
-                    <!--android:layout_height="wrap_content"-->
-                    <!--android:id="@+id/srcImage"-->
-                    <!--android:layout_centerVertical="true"-->
-                    <!--android:layout_centerHorizontal="true"-->
-                    <!--android:background="#dedede"-->
-                    <!--android:textColor="#a3a3a3" />-->
-            <!--</RelativeLayout>-->
-
-
+            <!-- src image -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="150dp"
+                android:background="#e4e3e3"
+                android:id="@+id/srcContainer">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/srcImage"
+                    android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"
+                    android:background="#dedede"
+                    android:textColor="#a3a3a3" />
+            </RelativeLayout>
+
+            <!-- rect image -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
                 android:background="#e4e3e3"
                 android:id="@+id/RectContainer">
 
                 <ImageView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:id="@+id/rect"
                     android:layout_centerVertical="true"
@@ -101,21 +102,39 @@
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
-            <!--<RelativeLayout-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="150dp"-->
-                <!--android:background="#e4e3e3"-->
-                <!--android:id="@+id/MedianContainer">-->
+            <!-- canny image -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:background="#e4e3e3"
+                android:id="@+id/CannyContainer">
 
-                <!--<ImageView-->
-                    <!--android:layout_width="wrap_content"-->
-                    <!--android:layout_height="wrap_content"-->
-                    <!--android:id="@+id/median"-->
-                    <!--android:layout_centerVertical="true"-->
-                    <!--android:layout_centerHorizontal="true"-->
-                    <!--android:background="#dedede"-->
-                    <!--android:textColor="#a3a3a3" />-->
-            <!--</RelativeLayout>-->
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/canny"
+                    android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"
+                    android:background="#dedede"
+                    android:textColor="#a3a3a3" />
+            </RelativeLayout>
+
+            <!-- canny image -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:background="#e4e3e3"
+                android:id="@+id/HoughContainer">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/hough"
+                    android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"
+                    android:background="#dedede"
+                    android:textColor="#a3a3a3" />
+            </RelativeLayout>
 
         </LinearLayout>
     </ScrollView>
