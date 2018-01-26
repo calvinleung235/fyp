@@ -4,8 +4,11 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.style.UnderlineSpan;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -21,6 +24,7 @@ import org.opencv.core.Range;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -198,7 +202,6 @@ public class OcrActivity extends AppCompatActivity {
     }
 
     public Mat getHoughLineMat(Mat src){
-        Mat initImage = src.clone();
         Mat gray = new Mat();
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY, 4);
 
@@ -206,19 +209,22 @@ public class OcrActivity extends AppCompatActivity {
         Imgproc.Canny(gray, edges, 80 ,100);
 
         Mat lines = new Mat();
-        Imgproc.HoughLinesP(edges, lines, 1, Math.PI/180, 100, 10, 30);
-        for(int i = 0; i < lines.cols(); i++){
-            double[] data = lines.get(0, i);
-            double x1 = data[0],
-                   y1 = data[1],
-                   x2 = data[2],
-                   y2 = data[3];
+        Imgproc.HoughLinesP(edges, lines, 1, Math.PI/180, 150, 70, 8);
+        for(int i = 0; i < lines.rows(); i++) {
+            for (int j = 0; j < lines.cols(); j++) {
+                double[] data = lines.get(i, j);
+                double x1 = data[0],
+                       y1 = data[1],
+                       x2 = data[2],
+                       y2 = data[3];
 
-            Point start = new Point(x1, y1);
-            Point end = new Point(x2, y2);
-            Imgproc.line(initImage, start, end, new Scalar(0, 0, 255), 8);
+                Point start = new Point(x1, y1);
+                Point end = new Point(x2, y2);
+                Imgproc.line(src, start, end, new Scalar(0), 4);
+            }
         }
-        return initImage;
+
+        return src;
     }
 
     public void runOCR(View view){
@@ -226,7 +232,18 @@ public class OcrActivity extends AppCompatActivity {
         mTess.setImage(image);
         OCRresult = mTess.getUTF8Text();
         TextView OCRTextView = findViewById(R.id.OCRTextView);
-        OCRTextView.setText(OCRresult);
+
+        SpannableString content = new SpannableString(OCRresult);
+        content.setSpan(new UnderlineSpan(), 0, OCRresult.length(), 0);
+        char[] chars = new char[4];
+        OCRresult.getChars(0,4,chars,0);
+        String test = "";
+
+        for(int i =0 ; i < chars.length ; i++){
+            test += chars[i];
+        }
+
+        OCRTextView.setText(test);
 
     }
 
