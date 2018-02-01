@@ -13,7 +13,6 @@ public class OcrText {
     private int textSize;
 
     public OcrText(){
-
     }
 
     public OcrText(char[] charSequence){

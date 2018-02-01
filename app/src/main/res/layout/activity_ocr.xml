@@ -129,12 +129,13 @@
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:id="@+id/hough"
+                    android:id="@+id/gray"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
                     android:background="#dedede"
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
+
 
         </LinearLayout>
     </ScrollView>
