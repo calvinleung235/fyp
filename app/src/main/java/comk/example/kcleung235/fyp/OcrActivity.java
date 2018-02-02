@@ -50,6 +50,7 @@ public class OcrActivity extends AppCompatActivity {
 
     Bitmap image;
     Bitmap normal_image;
+    Bitmap italic_image;
     private TessBaseAPI mTess;
     String datapath = "";
 
@@ -66,8 +67,9 @@ public class OcrActivity extends AppCompatActivity {
         //init image
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.handwriting, options);
+        image = BitmapFactory.decodeResource(getResources(), R.drawable.book_img, options);
         normal_image = BitmapFactory.decodeResource(getResources(), R.drawable.normal, options);
+        italic_image = BitmapFactory.decodeResource(getResources(), R.drawable.italic_bk, options);
         ImageView srcImage = findViewById(R.id.srcImage);
         srcImage.setImageBitmap(image);
 
@@ -372,76 +374,72 @@ public class OcrActivity extends AppCompatActivity {
         Imgproc.cvtColor(src_mat, gray, Imgproc.COLOR_RGB2GRAY);
 
         Mat blur = new Mat();
-        Imgproc.GaussianBlur(gray, blur, new Size(3,3), Math.sqrt(2));
-        Mat blur2 = new Mat();
-                blur.assignTo(blur2);
+        Imgproc.GaussianBlur(gray, blur, new Size(3,3),0,0);
 
-        Mat big = new Mat();
-        Imgproc.resize(blur, big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
+//        Mat big = new Mat();
+//        Imgproc.resize(blur, big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
+
+        Mat blur2 = new Mat();
+        Imgproc.bilateralFilter(gray, blur2, 3, 135,135);
+
+//        Mat blur2_big = new Mat();
+//        Imgproc.resize(blur2, blur2_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
 
         Mat black = new Mat();
-        Imgproc.threshold( blur, black, 180, 255, Imgproc.THRESH_TOZERO);
+        Imgproc.threshold( blur, black, 25, 255, Imgproc.THRESH_BINARY|Imgproc.THRESH_OTSU);
 
-        Mat black_big = new Mat();
-        Imgproc.resize(black, black_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
-
-        Mat black2 = new Mat();
-        Imgproc.threshold( blur2, black2, 180, 255, Imgproc.THRESH_OTSU);
-
-        Mat black2_big = new Mat();
-        Imgproc.resize(black2, black2_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
+//        Mat black_big = new Mat();
+//        Imgproc.resize(black, black_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
 
 
         ImageView iv = findViewById(R.id.rect);
-        iv.setImageBitmap(getBitmapFromMat(big));
+        iv.setImageBitmap(getBitmapFromMat(blur));
 
         ImageView iv2 = findViewById(R.id.canny);
-        iv2.setImageBitmap(getBitmapFromMat(black_big));
+        iv2.setImageBitmap(getBitmapFromMat(blur2));
 
         ImageView iv3 = findViewById(R.id.gray);
-        iv3.setImageBitmap(getBitmapFromMat(black2_big));
+        iv3.setImageBitmap(getBitmapFromMat(black));
 
-
-        mTess.setImage(src);
-        String a = mTess.getUTF8Text();
+        String t;
+        mTess.setImage(getBitmapFromMat(src_mat));
+        t = mTess.getUTF8Text();
         ResultIterator ri1 = mTess.getResultIterator();
         float k = ri1.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
 
         mTess.setImage(getBitmapFromMat(blur));
-        String s = mTess.getUTF8Text();
+        t = mTess.getUTF8Text();
+        ResultIterator ri3 = mTess.getResultIterator();
+        float bc = ri3.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
+
+        mTess.setImage(getBitmapFromMat(blur2));
+        t = mTess.getUTF8Text();
         ResultIterator ri = mTess.getResultIterator();
         float i = ri.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
 
-        mTess.setImage(getBitmapFromMat(black2));
-        String t = mTess.getUTF8Text();
+        mTess.setImage(getBitmapFromMat(black));
+        t = mTess.getUTF8Text();
+
         ResultIterator ri2 = mTess.getResultIterator();
         float j = ri2.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
 
-
-        int lower_quartile = 63;
-        int median = 127;
-        int upper_quartile = 190;
         double pixel_intensity[];
         int pix_int;
         float numberOfBlackPix = 0;
-        float non_white_pix = 0;
-        for ( int row = 0 ; row < src_mat.rows() ; row++ ){
-            for ( int col = 0 ; col < src_mat.cols() ; col++ ){
-                pixel_intensity = src_mat.get(row, col);
+        for ( int row = 0 ; row < black.rows() ; row++ ){
+            for ( int col = 0 ; col < black.cols() ; col++ ){
+                pixel_intensity = black.get(row, col);
                 pix_int = (int) pixel_intensity[0];
-                if ( pix_int != 255 || !(pix_int > 200) ) {
-                    non_white_pix++;
-                    if( pix_int == 0 ){
-                        numberOfBlackPix ++;
-                    }
+                if( pix_int == 0 ){
+                    numberOfBlackPix ++;
                 }
             }
         }
-        double totalPix = src_mat.cols() * src_mat.rows();
-        float confidence = numberOfBlackPix/non_white_pix;
+        float totalPix = blur.cols() * blur.rows() - numberOfBlackPix;
+        float confidence = numberOfBlackPix/totalPix;
 
         TextView tv = findViewById(R.id.OCRTextView);
-        tv.setText(  a + "  " + String.valueOf(k) + "    " + s + "  " + String.valueOf(i) + "    " + t + "  " + String.valueOf(j) );
+        tv.setText( String.valueOf(numberOfBlackPix) + " " + String.valueOf(confidence) +" "+ String.valueOf(k) + " " + String.valueOf(bc) + " " + String.valueOf(i) + " " + String.valueOf(j) );
     }
 
     private void checkFile(File dir) {
