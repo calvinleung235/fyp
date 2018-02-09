@@ -49,34 +49,31 @@
                     android:onClick="runOCR"/>
             </RelativeLayout>
 
-            <!-- OCR text -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:background="#e4e3e3"
-                android:id="@+id/OCRTextContainer">
+                android:layout_height="wrap_content"
+                android:background="#FFFFFF">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="OCR Text will appear here"
-                    android:id="@+id/OCRTextView"
+                    android:id="@+id/CON"
                     android:textSize="18dp"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
                     android:background="#dedede"
-                    android:textColor="#a3a3a3" />
+                    android:textColor="#000000" />
             </RelativeLayout>
 
             <!-- src image -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
+                android:layout_height="match_parent"
                 android:background="#e4e3e3"
                 android:id="@+id/srcContainer">
 
                 <ImageView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:id="@+id/srcImage"
                     android:layout_centerVertical="true"
@@ -85,58 +82,84 @@
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
-            <!-- rect image -->
+            <!-- test image -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:background="#e4e3e3"
-                android:id="@+id/RectContainer">
+                android:layout_height="match_parent"
+                android:background="#e4e3e3">
 
                 <ImageView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:id="@+id/rect"
+                    android:id="@+id/testImage"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
                     android:background="#dedede"
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
-            <!-- canny image -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:background="#e4e3e3"
-                android:id="@+id/CannyContainer">
+                android:layout_height="match_parent"
+                android:background="#e4e3e3">
 
                 <ImageView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:id="@+id/canny"
+                    android:id="@+id/testImage2"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
                     android:background="#dedede"
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
-            <!-- canny image -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:background="#e4e3e3"
-                android:id="@+id/HoughContainer">
+                android:layout_height="match_parent"
+                android:background="#e4e3e3">
 
                 <ImageView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:id="@+id/gray"
+                    android:id="@+id/testImage3"
                     android:layout_centerVertical="true"
                     android:layout_centerHorizontal="true"
                     android:background="#dedede"
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
 
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#e4e3e3">
 
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/testImage4"
+                    android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"
+                    android:background="#dedede"
+                    android:textColor="#a3a3a3" />
+            </RelativeLayout>
+
+            <!-- OCR text -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#FFFFFF"
+                android:id="@+id/OCRTextContainer">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/OCRTextView"
+                    android:textSize="18dp"
+                    android:layout_centerVertical="true"
+                    android:layout_centerHorizontal="true"
+                    android:background="#dedede"
+                    android:textColor="#000000" />
+            </RelativeLayout>
         </LinearLayout>
     </ScrollView>
     <!--</RelativeLayout>-->

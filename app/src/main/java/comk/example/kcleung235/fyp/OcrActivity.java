@@ -22,15 +22,20 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
+import org.opencv.core.KeyPoint;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfFloat;
 import org.opencv.core.MatOfInt;
+import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Range;
+import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.features2d.FastFeatureDetector;
+import org.opencv.features2d.FeatureDetector;
 import org.opencv.imgproc.Imgproc;
 import org.w3c.dom.Text;
 
@@ -67,11 +72,11 @@ public class OcrActivity extends AppCompatActivity {
         //init image
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.book_img, options);
+        image = BitmapFactory.decodeResource(getResources(), R.drawable.border, options);
         normal_image = BitmapFactory.decodeResource(getResources(), R.drawable.normal, options);
         italic_image = BitmapFactory.decodeResource(getResources(), R.drawable.italic_bk, options);
-        ImageView srcImage = findViewById(R.id.srcImage);
-        srcImage.setImageBitmap(image);
+//        ImageView srcImage = findViewById(R.id.srcImage);
+//        srcImage.setImageBitmap(image);
 
         //initialize Tesseract API
         String language = "eng";
@@ -85,17 +90,8 @@ public class OcrActivity extends AppCompatActivity {
         OpenCVLoader.initDebug();
 
 
-//        Mat src = getMatFromBitmap(image);
-//        Mat mat_canny = getCannyMat(src);
-//        Mat contourMat = charBoundingRect(src);
-//
-//        Bitmap test = getBitmapFromMat(contourMat);
-//        displayBitmap(R.id.rect, test);
-//
-//        Bitmap test2 = getBitmapFromMat(mat_canny);
-//        displayBitmap(R.id.canny, test2);
+        borderRemoval(image);
 
-        calcF(image);
 
     }
 
@@ -132,27 +128,6 @@ public class OcrActivity extends AppCompatActivity {
         Size kSize = new Size(3,3);
         Imgproc.GaussianBlur(gray, resultMat, kSize,2, 2);
 
-        Mat kernel = new Mat(3,3, CvType.CV_32F){
-            {
-                put(0,0,-1);
-                put(0,1,-1);
-                put(0,2,-1);
-
-                put(1,0,-1);
-                put(1,1,9);
-                put(1,2,-1);
-
-                put(2,0,-1);
-                put(2,1,-1);
-                put(2,2,-1);
-            }
-        };
-        Imgproc.filter2D(gray, resultMat, -1, kernel);
-
-        Imgproc.threshold(gray, resultMat, 42, 255, Imgproc.THRESH_OTSU);
-
-        resultMat = enhanceConstrast(gray);
-
         return getBitmapFromMat(resultMat);
     }
 
@@ -173,15 +148,13 @@ public class OcrActivity extends AppCompatActivity {
         Range row_range = new Range(roiTop, roiBottom);
         Range col_range = new Range(roiLeft, roiRight);
 
+
         return  new Mat(src, row_range, col_range);
     }
 
-    public Mat getMatWithRects(Bitmap src, String type){
-
-        Bitmap bitmapForTess = sharpenImage(src);
-        mTess.setImage(bitmapForTess);
-
-        Mat result = getMatFromBitmap(bitmapForTess);
+    public Mat getMatWithRects(Bitmap src){
+        mTess.setImage(src);
+        Mat result = getMatFromBitmap(src);
 
         ArrayList<Rect> rectArrayList = mTess.getWords().getBoxRects();
         Point top_left = new Point(0,0);
@@ -190,11 +163,7 @@ public class OcrActivity extends AppCompatActivity {
         double[] y = new double[2];
 
         for (Rect rects : rectArrayList ){
-            if (type.equals("underline")){
-                rects.top = rects.top + (rects.height()*3/4);
-            }
-            else if (type.equals("Bold")){}
-            else {}
+
             x[0] = rects.left;
             x[1] = rects.top;
             y[0] = rects.right;
@@ -227,10 +196,10 @@ public class OcrActivity extends AppCompatActivity {
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY, 4);
 
         Mat edges = new Mat();
-        Imgproc.Canny(gray, edges, 80 ,100);
+        Imgproc.Canny(gray, edges, 100 ,250);
 
         Mat lines = new Mat();
-        Imgproc.HoughLinesP(edges, lines, 1, Math.PI/180, 150, 70, 8);
+        Imgproc.HoughLinesP(edges, lines, 1, Math.PI/180, 150, 200, 5);
         for(int i = 0; i < lines.rows(); i++) {
             for (int j = 0; j < lines.cols(); j++) {
                 double[] data = lines.get(i, j);
@@ -241,11 +210,14 @@ public class OcrActivity extends AppCompatActivity {
 
                 Point start = new Point(x1, y1);
                 Point end = new Point(x2, y2);
-                Imgproc.line(src, start, end, new Scalar(0), 4);
+                Imgproc.line(src, start, end, new Scalar(0,0,255,255), 2);
             }
         }
 
-        return src;
+        Mat big = new Mat();
+        Imgproc.resize(src, big, new Size( src.cols() * 5 , src.rows() * 5 ));
+
+        return big;
     }
 
     public void runOCR(View view){
@@ -360,8 +332,8 @@ public class OcrActivity extends AppCompatActivity {
             cast = (int) data1[j];
             t += String.valueOf(cast) + ",";
         }
-        ImageView iv = findViewById(R.id.rect);
-        iv.setImageBitmap(getBitmapFromMat(gray));
+//        ImageView iv = findViewById(R.id.testImage);
+//        iv.setImageBitmap(getBitmapFromMat(gray));
         TextView tv = findViewById(R.id.OCRTextView);
         tv.setText(s+"   "+t);
     }
@@ -374,13 +346,13 @@ public class OcrActivity extends AppCompatActivity {
         Imgproc.cvtColor(src_mat, gray, Imgproc.COLOR_RGB2GRAY);
 
         Mat blur = new Mat();
-        Imgproc.GaussianBlur(gray, blur, new Size(3,3),0,0);
+        Imgproc.GaussianBlur(gray, blur, new Size(3,3), Math.sqrt(2));
 
 //        Mat big = new Mat();
 //        Imgproc.resize(blur, big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
 
         Mat blur2 = new Mat();
-        Imgproc.bilateralFilter(gray, blur2, 3, 135,135);
+        Imgproc.bilateralFilter(gray, blur2, 3, 25,25);
 
 //        Mat blur2_big = new Mat();
 //        Imgproc.resize(blur2, blur2_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
@@ -392,55 +364,87 @@ public class OcrActivity extends AppCompatActivity {
 //        Imgproc.resize(black, black_big, new Size( src_mat.cols() * 15 , src_mat.rows() * 15 ));
 
 
-        ImageView iv = findViewById(R.id.rect);
-        iv.setImageBitmap(getBitmapFromMat(blur));
+//        ImageView iv2 = findViewById(R.id.canny);
+//        iv2.setImageBitmap(getBitmapFromMat(blur2));
 
-        ImageView iv2 = findViewById(R.id.canny);
-        iv2.setImageBitmap(getBitmapFromMat(blur2));
-
-        ImageView iv3 = findViewById(R.id.gray);
-        iv3.setImageBitmap(getBitmapFromMat(black));
+//        ImageView iv3 = findViewById(R.id.gray);
+//        iv3.setImageBitmap(getBitmapFromMat(black));
 
         String t;
         mTess.setImage(getBitmapFromMat(src_mat));
         t = mTess.getUTF8Text();
-        ResultIterator ri1 = mTess.getResultIterator();
-        float k = ri1.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
+        ResultIterator ri = mTess.getResultIterator();
+        float srcCON = ri.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
 
         mTess.setImage(getBitmapFromMat(blur));
         t = mTess.getUTF8Text();
-        ResultIterator ri3 = mTess.getResultIterator();
-        float bc = ri3.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
-
-        mTess.setImage(getBitmapFromMat(blur2));
-        t = mTess.getUTF8Text();
-        ResultIterator ri = mTess.getResultIterator();
-        float i = ri.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
-
-        mTess.setImage(getBitmapFromMat(black));
-        t = mTess.getUTF8Text();
-
         ResultIterator ri2 = mTess.getResultIterator();
-        float j = ri2.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
+        float blurCON = ri2.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD);
 
-        double pixel_intensity[];
-        int pix_int;
-        float numberOfBlackPix = 0;
-        for ( int row = 0 ; row < black.rows() ; row++ ){
-            for ( int col = 0 ; col < black.cols() ; col++ ){
-                pixel_intensity = black.get(row, col);
-                pix_int = (int) pixel_intensity[0];
-                if( pix_int == 0 ){
-                    numberOfBlackPix ++;
-                }
+
+//        double pixel_intensity[];
+//        int pix_int;
+//        float numberOfBlackPix = 0;
+//        for ( int row = 0 ; row < black.rows() ; row++ ){
+//            for ( int col = 0 ; col < black.cols() ; col++ ){
+//                pixel_intensity = black.get(row, col);
+//                pix_int = (int) pixel_intensity[0];
+//                if( pix_int == 0 ){
+//                    numberOfBlackPix ++;
+//                }
+//            }
+//        }
+//        float totalPix = blur.cols() * blur.rows() - numberOfBlackPix;
+//        float confidence = numberOfBlackPix/totalPix;
+        ImageView iv = findViewById(R.id.testImage);
+        iv.setImageBitmap(getBitmapFromMat(black));
+    }
+
+    public void borderRemoval(Bitmap src){
+        Mat source = getMatFromBitmap(src);
+        mTess.setImage(src);
+
+        Mat gray = new Mat();
+        Imgproc.cvtColor(source, gray, Imgproc.COLOR_RGB2GRAY);
+        Mat g_blur = new Mat();
+        Mat b_blur = new Mat();
+        Mat dilate = new Mat();
+        Mat threshold = new Mat();
+
+        Imgproc.bilateralFilter(gray, b_blur, 15, 60,60);
+
+        Mat canny = new Mat();
+        Imgproc.Canny(b_blur, canny, 150, 200);
+
+
+        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(35,80));
+        Imgproc.dilate(canny, dilate, element);
+
+        double largest_area=0;
+        double largest_contour_index=0;
+
+        ArrayList<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        org.opencv.core.Rect rect = new org.opencv.core.Rect();
+
+        Imgproc.findContours(dilate, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE );
+        for( int i = 0; i< contours.size(); i++ ) {
+            double a= Imgproc.contourArea( contours.get(i),false);
+            if( a > largest_area ){
+                largest_area = a;
+                rect = Imgproc.boundingRect(contours.get(i));
             }
         }
-        float totalPix = blur.cols() * blur.rows() - numberOfBlackPix;
-        float confidence = numberOfBlackPix/totalPix;
 
-        TextView tv = findViewById(R.id.OCRTextView);
-        tv.setText( String.valueOf(numberOfBlackPix) + " " + String.valueOf(confidence) +" "+ String.valueOf(k) + " " + String.valueOf(bc) + " " + String.valueOf(i) + " " + String.valueOf(j) );
+        Imgproc.rectangle(dilate, rect.tl(), rect.br(), new Scalar( 255,255,255,255), 5);
+        Mat crop = new Mat();
+        crop = source.submat(rect);
+
+        displayBitmap(R.id.testImage, getBitmapFromMat(crop));
+        displayBitmap(R.id.testImage2, getBitmapFromMat(dilate));
+
     }
+
 
     private void checkFile(File dir) {
         if (!dir.exists()&& dir.mkdirs()){
