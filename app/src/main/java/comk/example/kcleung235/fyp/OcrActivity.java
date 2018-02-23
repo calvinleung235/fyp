@@ -363,7 +363,9 @@ public class OcrActivity extends AppCompatActivity {
         int[] ints = conDefect.toArray();
         int start_index;
         int end_index;
+
         Point[] pts_array = contours.get(index).toArray();
+
         int init=0;
         double min_x_min_y = 0;
         double max_x_min_y = 0;
@@ -421,23 +423,27 @@ public class OcrActivity extends AppCompatActivity {
 
         Imgproc.drawContours(src, contours, index, new Scalar(255,0,255,255),25);
 
-//        Mat transform;
-//        MatOfPoint2f perspective = new MatOfPoint2f(top_left_point, top_right_point, bottom_left_point, bottom_right_point);
-//        MatOfPoint2f dst = new MatOfPoint2f(vertices[0],vertices[1],vertices[2],vertices[3]);
-//
-//        Mat transformed = new Mat(src.size(), src.type());
-//        transform = Imgproc.getPerspectiveTransform(perspective, dst);
-//
-//        Imgproc.warpPerspective(src, transformed, transform, src.size());
+        Mat transform;
+        MatOfPoint2f perspective = new MatOfPoint2f(top_left_point, top_right_point, bottom_left_point, new Point(bottom_right_point.x,bottom_left_point.y));
+//        MatOfPoint2f dst = new MatOfPoint2f(rect.tl(), new Point(rect.x+rect.width-1,rect.y), new Point(rect.x, rect.y+rect.height-1), rect.br());
+        MatOfPoint2f dst = new MatOfPoint2f(vertices[1],vertices[2],vertices[0],vertices[3]);
+        List<Point> points2 = new ArrayList<>();
+        Converters.Mat_to_vector_Point(dst, points2);
+
+        Mat transformed = new Mat(src.size(), src.type());
+        transform = Imgproc.getPerspectiveTransform(perspective, dst);
+
+        Imgproc.warpPerspective(src, transformed, transform, src.size());
 
         displayBitmap(R.id.testImage, getBitmapFromMat(src));
-//        displayBitmap(R.id.testImage2, getBitmapFromMat(transformed));
+        displayBitmap(R.id.testImage2, getBitmapFromMat(transformed));
+        displayBitmap(R.id.testImage3, getBitmapFromMat(dilate));
 
         String text_value = "";
         String text_value2 = "";
 
         for(int i = 0; i<4 ;i++){
-            text_value += String.valueOf( (int)vert.get(i).x ) + ", " + String.valueOf( (int)vert.get(i).y ) + "\n";
+            text_value += String.valueOf( points2.get(i).x ) + ", " + String.valueOf( points2.get(i).y ) + "\n";
             text_value2 += String.valueOf( (int)vertices[i].x ) + ", " + String.valueOf( (int)vertices[i].y ) + "\n";
         }
 
