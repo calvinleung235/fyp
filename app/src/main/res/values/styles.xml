@@ -8,4 +8,9 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="customFontstyle" parent="@android:style/TextAppearance.Medium">
+        <item name="android:fontFamily">@font/baskerville</item>
+    </style>
+
+
 </resources>

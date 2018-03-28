@@ -22,28 +22,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         OpenCVLoader.initDebug();
-        Mat rgbMat = new Mat();
-        Mat grayMat = new Mat();
 
     }
 
-    private void detectEdges(Bitmap bitmap) {
-        Mat rgba = new Mat();
-        Utils.bitmapToMat(bitmap, rgba);
 
-        Mat edges = new Mat(rgba.size(), CvType.CV_8UC1);
-        Imgproc.cvtColor(rgba, edges, Imgproc.COLOR_RGB2GRAY, 4);
-        Imgproc.Canny(edges, edges, 50, 100);
-
-        Bitmap resultBitmap = Bitmap.createBitmap(edges.cols(), edges.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(edges, resultBitmap);
-        ImageView img = (ImageView) findViewById(R.id.img);
-        img.setImageBitmap(resultBitmap);
-
-
-//        // Don't do that at home or work it's for visualization purpose.
-//        BitmapHelper.showBitmap(this, bitmap, imageView);
-//        BitmapHelper.showBitmap(this, resultBitmap, detectEdgesImageView);
-    }
 
 }
