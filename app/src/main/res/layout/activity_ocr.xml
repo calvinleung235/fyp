@@ -129,6 +129,44 @@
                     android:lineSpacingExtra="10sp"
                     android:padding="40dp"/>
             </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#FFFFFF"
+                android:layout_margin="0dp">
+
+                <TextView
+                    android:id="@+id/ocrText1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerHorizontal="true"
+                    android:layout_centerVertical="true"
+                    android:background="#FFFFFF"
+                    android:fontFamily="@font/b_regular"
+                    android:textAppearance="@style/customFontstyle"
+                    android:lineSpacingExtra="10sp"
+                    android:padding="40dp"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#FFFFFF"
+                android:layout_margin="0dp">
+
+                <TextView
+                    android:id="@+id/ocrText2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerHorizontal="true"
+                    android:layout_centerVertical="true"
+                    android:background="#FFFFFF"
+                    android:fontFamily="@font/b_regular"
+                    android:textAppearance="@style/customFontstyle"
+                    android:lineSpacingExtra="10sp"
+                    android:padding="40dp"/>
+            </RelativeLayout>
         </LinearLayout>
     </ScrollView>
 

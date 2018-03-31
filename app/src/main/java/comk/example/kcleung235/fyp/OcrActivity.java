@@ -4,13 +4,15 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
+import android.graphics.Typeface;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.LeadingMarginSpan;
-import android.text.style.UnderlineSpan;
+import android.text.style.StyleSpan;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -44,6 +46,7 @@ import java.util.List;
 public class OcrActivity extends AppCompatActivity {
 
     Bitmap image;
+    Bitmap image2;
     private TessBaseAPI mTess;
     String datapath = "";
 
@@ -55,7 +58,8 @@ public class OcrActivity extends AppCompatActivity {
         //init image
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.border6, options);
+        image = BitmapFactory.decodeResource(getResources(), R.drawable.content, options);
+        image2 = BitmapFactory.decodeResource(getResources(), R.drawable.border5, options);
 
         //initialize Tesseract API
         String language = "eng";
@@ -67,8 +71,7 @@ public class OcrActivity extends AppCompatActivity {
         mTess.init(datapath, language);
 
         OpenCVLoader.initDebug();
-
-        computeConnectedComponent(approxPolygon(getMatFromBitmap(image)));
+        runOCR(approxPagePolygon(getMatFromBitmap(image2)));
     }
 
     public Bitmap getBitmapFromMat(Mat src){
@@ -92,8 +95,44 @@ public class OcrActivity extends AppCompatActivity {
         Mat result = new Mat();
         Mat gray = new Mat();
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY);
-        Imgproc.threshold(gray, result, 64, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.threshold(gray, result, 32, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);
         return result;
+    }
+
+    private void quickSort(Point arr[], int low, int high) {
+        if (low < high)
+        {
+        /* pi is partitioning index, arr[p] is now
+           at right place */
+            int pi = partition(arr, low, high);
+
+            quickSort(arr, low, pi - 1);  // Before pi
+            quickSort(arr, pi + 1, high); // After pi
+        }
+    }
+
+    private int partition (Point arr[], int low, int high) {
+        // pivot (Element to be placed at right position)
+        double pivot = arr[high].y;
+
+        int i = (low - 1);  // Index of smaller element
+
+        for (int j = low; j <= high- 1; j++)
+        {
+            // If current element is smaller than or
+            // equal to pivot
+            if (arr[j].y <= pivot)
+            {
+                i++;    // increment index of smaller element
+                double temp = arr[i].y;
+                arr[i].y = arr[j].y;
+                arr[j].y = temp;
+            }
+        }
+        double temp = arr[i + 1].y;
+        arr[i + 1].y = arr[high].y;
+        arr[high].y = temp;
+        return (i + 1);
     }
 
     public Mat computeConnectedComponent(Mat src){
@@ -101,202 +140,263 @@ public class OcrActivity extends AppCompatActivity {
         Mat threshold = noiseRemovedBinarization(src);
         Mat white = Mat.ones(src.size(), CvType.CV_8UC1);
 
-        Mat label = new Mat();
-        Mat stat = new Mat();
-        Mat centroid = new Mat();
-        int labels = Imgproc.connectedComponentsWithStats(threshold, label, stat, centroid, 8, CvType.CV_16U);
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(10,5));
+        Imgproc.morphologyEx(threshold, threshold, Imgproc.MORPH_CLOSE, kernel);
 
-        TextView tv = findViewById(R.id.text);
-        white.setTo(new Scalar(255));
+        Imgproc.medianBlur(threshold, threshold, 3);
+        Imgproc.medianBlur(threshold, threshold, 3);
 
-        for ( int r = 0 ; r < labels ; r++){
-            double x = centroid.get(r, 0)[0];
-            double y = centroid.get(r, 1)[0];
-            Point centroidPoint = new Point(x, y);
-            if( x > 30 && x < src.cols() - 30 ){
-                if ( y > 30 && y < src.rows() - 30 ){
-                    Imgproc.circle(src, centroidPoint, 5, new Scalar(255,0,0,255), 8);
+
+        ArrayList<MatOfPoint> contours = new ArrayList<>();
+        Imgproc.findContours(threshold, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+
+        ArrayList<org.opencv.core.Rect> rectArrayList = new ArrayList<>();
+        double euDist = 99999;
+        for ( int n = 0 ; n < 30 ; n++){
+            MatOfPoint current = contours.get(n);
+            MatOfPoint merged = new MatOfPoint(current.toArray());
+            int numsOfRectCombined = 0;
+
+            for ( int index = n ; index < 30 ; index++ ){
+                if (n == index) continue;
+
+                RotatedRect rotatedRectOfCurrent = Imgproc.minAreaRect(new MatOfPoint2f(current.toArray()));
+                MatOfPoint neighbour = contours.get(index);
+                RotatedRect rotatedRectOfCompare = Imgproc.minAreaRect(new MatOfPoint2f(neighbour.toArray()));
+
+                double thresholdD = 300.;
+
+                euDist = Math.sqrt( Math.pow((rotatedRectOfCurrent.center.x - rotatedRectOfCompare.center.x), 2)
+                                           + Math.pow((rotatedRectOfCurrent.center.y - rotatedRectOfCompare.center.y), 2));
+
+                double yDist = Math.abs(rotatedRectOfCurrent.center.y - rotatedRectOfCompare.center.y);
+
+                if ( yDist < 30 ){
+                    if (euDist < thresholdD){
+                        merged.push_back(neighbour);
+                        numsOfRectCombined ++;
+
+                        contours.remove(current);
+                        current = neighbour;
+                    }
                 }
             }
+            rectArrayList.add(Imgproc.boundingRect(merged));
+
+            contours.remove(current);
+            n += numsOfRectCombined;
         }
 
+        for (org.opencv.core.Rect r : rectArrayList){
+            Imgproc.rectangle(src, r.tl(), r.br(), new Scalar(255, 0, 0, 255),5);
+        }
+
+        TextView tv = findViewById(R.id.text);
+        tv.setText(String.valueOf(euDist));
 
         displayBitmap(R.id.testImage, getBitmapFromMat(src));
-        tv.setText(String.valueOf(centroid.get(0, 0)[0]));
-
+        displayBitmap(R.id.testImage2, getBitmapFromMat(threshold));
         return result;
     }
 
-    public Mat approxPolygon(Mat src){
+    public Mat approxPagePolygon(Mat src){
         Mat srcClone = src.clone();
 
         Mat gray = new Mat();
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY);
 
         Mat blur = new Mat();
-        Imgproc.bilateralFilter(gray, blur, 5, 60, 60);
+        Imgproc.bilateralFilter(gray, blur, 5, 80, 80);
 
         Mat canny = new Mat();
-        Imgproc.Canny(blur, canny, 50, 150, 3, false);
+        Imgproc.Canny(blur, canny, 25, 50, 3, false);
 
         Mat closing = new Mat();
         Mat closingElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(15, 15));
-
         Imgproc.morphologyEx(canny, closing, Imgproc.MORPH_DILATE, closingElement);
 
+        ArrayList<MatOfPoint> contours = getContoursForApproxPolys(closing);
+        for ( MatOfPoint contour : contours ) {
+            if ( Imgproc.boundingRect(contour).area() > src.size().area() * 0.2) {
+                MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
+                MatOfPoint2f polys = new MatOfPoint2f();
+                Imgproc.approxPolyDP(contour2f, polys, Imgproc.arcLength(contour2f, true) * 0.1, true);
+
+                if ( polys.rows() == 4 ) {
+    //                Imgproc.drawContours(src, approxPolys, id, new Scalar(0, 255, 0, 255), 5); // Drawing contour of the polygon
+                    RotatedRect rotatedRect = Imgproc.minAreaRect(contour2f);
+
+                    Mat transformed = computePerspectiveTransform(srcClone, polys, rotatedRect);
+                    Mat rotatedImage = computeVertexBasedImageRotation(transformed, rotatedRect);
+
+                    cropImage(transformed, getRotatedRectProperSize(rotatedRect), rotatedRect.center);
+                    cropImage(rotatedImage, getRotatedRectProperSize(rotatedRect), rotatedRect.center);
+
+                    displayBitmap(R.id.testImage3, getBitmapFromMat(transformed));
+                    displayBitmap(R.id.testImage4, getBitmapFromMat(rotatedImage));
+                    return rotatedImage;
+                }
+            }
+        }
+//        for ( int index = 0 ; index < contours.size() ; index++ ){
+//            if ( Imgproc.minAreaRect(new MatOfPoint2f(contours.get(index).toArray())).size.area() > src.size().area() * 0.1 ){
+//                Imgproc.drawContours(src, contours, index, new Scalar(255, 0 , 0, 255),2);
+//                double[] childIndex =  hierarchy.get(0, index);
+//                if ( childIndex[2] != -1 ){
+//                    Imgproc.drawContours(src, contours, (int)childIndex[2], new Scalar(0, 0 , 255, 255),2);
+//                }
+//            }
+//        } // drawing the contours
+        Mat failedResult = getBorderRemovedMat(srcClone);
+        displayBitmap(R.id.testImage, getBitmapFromMat(closing));
+        displayBitmap(R.id.testImage2, getBitmapFromMat(failedResult));
+        return failedResult;
+    }
+
+    private Mat computePerspectiveTransform(Mat src, MatOfPoint2f polys, RotatedRect respectiveRectShape){
+        Point[] verticesOfPoly = polys.toArray();
+        Point[] respectivePoints = new Point[4];
+        respectiveRectShape.points(respectivePoints);
+
+        Mat transformed = new Mat();
+        MatOfPoint2f originalPerspective = new MatOfPoint2f(verticesOfPoly[0], verticesOfPoly[1], verticesOfPoly[3], verticesOfPoly[2]);
+        MatOfPoint2f expectedPerspective = new MatOfPoint2f(respectivePoints[2], respectivePoints[3], respectivePoints[1], respectivePoints[0]);
+        Mat perspectiveTransformMat = Imgproc.getPerspectiveTransform(originalPerspective, expectedPerspective);
+        Imgproc.warpPerspective(src, transformed, perspectiveTransformMat, src.size(),Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE, new Scalar(0));
+
+        return transformed;
+    }
+
+    private Size getRotatedRectProperSize ( RotatedRect rotatedRect){
+        double width = rotatedRect.size.width;
+        double height = rotatedRect.size.height;
+        if (rotatedRect.angle < 45.){
+            double temp = width;
+            width = height;
+            height = temp;
+        }
+        return new Size(width, height);
+    }
+
+    private void cropImage (Mat src, Size size, Point center) {
+        List<Mat> channelsOfTransformed = new ArrayList<>();
+        Core.split(src, channelsOfTransformed);
+        ArrayList<Mat> channelsOfResult = new ArrayList<>();
+        for ( int i = 0 ; i < channelsOfTransformed.size() ; i++ ){
+            Mat result = new Mat();
+            Imgproc.getRectSubPix(channelsOfTransformed.get(i), size, center, result, channelsOfTransformed.get(i).type());
+            channelsOfResult.add(result);
+        }
+        Core.merge(channelsOfResult, src);
+    }
+
+    private Mat computeVertexBasedImageRotation ( Mat src, RotatedRect rotatedRect ){
+        Mat rotated = new Mat();
+        double angle = getRotationAngle(rotatedRect);
+        Mat rotationMatrix = Imgproc.getRotationMatrix2D(rotatedRect.center, angle, 1);
+        Imgproc.warpAffine(src, rotated, rotationMatrix, src.size(), Imgproc.INTER_CUBIC, Core.BORDER_REPLICATE, new Scalar(0));
+        return rotated;
+    }
+
+    @NonNull
+    private ArrayList<MatOfPoint> getContoursForApproxPolys(Mat closing) {
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(closing, contours, hierarchy, Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_NONE);
-
-        ArrayList<MatOfPoint> approxPolys = new ArrayList<>();
-
-        for ( MatOfPoint contour : contours ) {
-            if ( Imgproc.boundingRect(contour).area() > src.size().area() * 0.1) {
-                MatOfPoint2f curve = new MatOfPoint2f(contour.toArray());
-                MatOfPoint2f polys = new MatOfPoint2f();
-                Imgproc.approxPolyDP(curve, polys, Imgproc.arcLength(curve, true) * 0.1, true);
-                approxPolys.add(new MatOfPoint(polys.toArray()));
-            }
-        }
-
-        Mat finalResult = new Mat();
-
-        for ( int id = 0 ; id < approxPolys.size() ; id++){
-            if ( approxPolys.get(id).rows() == 4 ) {
-                Point[] verticesOfPoly = new Point[4];
-
-                for ( int row = 0 ; row < approxPolys.get(id).rows() ; row++ ){
-                    verticesOfPoly[row] = new Point( approxPolys.get(id).get(row, 0) );
-                }
-
-                double topWidth = Math.abs( verticesOfPoly[0].x - verticesOfPoly[3].x );
-                double bottomWidth = Math.abs( verticesOfPoly[1].x - verticesOfPoly[2].x );
-                double meanWidth = (topWidth + bottomWidth) / 2;
-
-                double leftHeight = Math.abs( verticesOfPoly[3].y - verticesOfPoly[2].y );
-                double rightHeight = Math.abs( verticesOfPoly[1].y - verticesOfPoly[0].y );
-                double meanHeight = (leftHeight + rightHeight) / 2;
-
-                if ( meanWidth > (src.width() * 0.5)  &&  meanHeight > (src.height() * 0.5) ){
-                    Imgproc.drawContours(src, approxPolys, id, new Scalar(0, 255, 0, 255), 5); // Drawing contour of the polygon
-
-                    RotatedRect rotatedRect = Imgproc.minAreaRect(new MatOfPoint2f(verticesOfPoly));
-                    Point[] rRectVertices = new Point[4];
-                    rotatedRect.points(rRectVertices);
-
-                    for ( int k = 0 ; k<4 ; k++ ){
-                        Imgproc.line(src, rRectVertices[k], rRectVertices[(k+1) % 4], new Scalar(0, 0, 255, 255), 5);
-                    } // Drawing lines
-
-                    double angle = rotatedRect.angle;
-                    if (angle < -45.) {
-                        angle += 90.;
-                    }
-
-                    Mat rotated = new Mat();
-                    Mat rot_mat = Imgproc.getRotationMatrix2D(rotatedRect.center, angle, 1);
-                    Imgproc.warpAffine(srcClone, rotated, rot_mat, src.size(), Imgproc.INTER_CUBIC, Core.BORDER_DEFAULT, new Scalar(0));
-
-//                    double a = Imgproc.contourArea(approxPolys.get(id));
-//                    double p = Imgproc.arcLength(new MatOfPoint2f(approxPolys.get(id).toArray()), true);
-//                    double width = (p + Math.sqrt(Math.pow(p,2) - (16 * a)))/4;
-//                    double height = (p/2 - width);
-//
-//                    if (width > height){
-//                        double temp = height;
-//                        height = width;
-//                        width = temp;
-//                    } // Cal smaller rect size
-
-                    double[] lengthArray = new double[4];
-                    for ( int r = 0; r < rRectVertices.length ; r++){
-                        double x1 = rRectVertices[r].x;
-                        double y1 = rRectVertices[r].y;
-                        double x2 = rRectVertices[(r+1) % rRectVertices.length].x;
-                        double y2 = rRectVertices[(r+1) % rRectVertices.length].y;
-
-                        double length = Math.sqrt(Math.pow((x1-x2),2) + Math.pow((y1-y2),2));
-                        lengthArray[r] = length;
-                    }
-                    double max = lengthArray[0];
-                    double min = lengthArray[0];
-                    for ( int r = 0; r < rRectVertices.length ; r++ ) {
-                        if(lengthArray[r] >= max){
-                            max = lengthArray[r];
-                        }
-                        if(lengthArray[r] <= min){
-                            min = lengthArray[r];
-                        }
-                    }
-
-                    List<Mat> channelsOfRotated = new ArrayList<>();
-                    Core.split(rotated, channelsOfRotated);
-
-                    ArrayList<Mat> channelsOfResult = new ArrayList<>();
-
-                    for ( int i = 0 ; i < channelsOfRotated.size() ; i++ ){
-                        Mat result = new Mat();
-                        Imgproc.getRectSubPix(channelsOfRotated.get(i), new Size(min, max), rotatedRect.center, result, channelsOfRotated.get(i).type());
-                        channelsOfResult.add(result);
-                    }
-                    org.opencv.core.Rect boundingRect = Imgproc.boundingRect(approxPolys.get(id));
-
-                    Imgproc.cvtColor(srcClone, srcClone, Imgproc.COLOR_RGB2GRAY);
-                    Mat bRect = new Mat();
-                    Imgproc.getRectSubPix(srcClone, boundingRect.size(), rotatedRect.center, bRect, srcClone.type());
-
-                    Core.merge(channelsOfResult, finalResult);
-                    displayBitmap(R.id.testImage2, getBitmapFromMat(bRect));
-                    displayBitmap(R.id.testImage3, getBitmapFromMat(finalResult));
-
-//                    MatOfPoint2f originalAffine = new MatOfPoint2f(verticesOfPoly[3], verticesOfPoly[0], verticesOfPoly[2], verticesOfPoly[1]);
-//                    Point tr = new Point(verticesOfPoly[3].x + min -1, verticesOfPoly[3].y);
-//                    Point bl = new Point( verticesOfPoly[3].x, verticesOfPoly[3].y + max -1);
-//                    Point br = new Point( verticesOfPoly[3].x + min -1, verticesOfPoly[3].y + max -1 );
-//                    MatOfPoint2f expectAffine = new MatOfPoint2f(verticesOfPoly[3], tr, bl, br);
-//
-//                    Mat affine = Imgproc.getPerspectiveTransform(originalAffine, expectAffine);
-//                    Mat transformed = new Mat();
-//                    Imgproc.warpPerspective(finalResult, transformed, affine, finalResult.size(),Imgproc.INTER_LANCZOS4, Core.BORDER_REPLICATE, new Scalar(0));
-//                    displayBitmap(R.id.testImage4, getBitmapFromMat(transformed)); // Perspective transform // Perspective Transform
-                }
-            }
-        }
-
-        for ( int index = 0 ; index < contours.size() ; index++ ){
-            if ( Imgproc.minAreaRect(new MatOfPoint2f(contours.get(index).toArray())).size.area() > src.size().area() * 0.1 ){
-                Imgproc.drawContours(src, contours, index, new Scalar(255, 0 , 0, 255),2);
-                double[] childIndex =  hierarchy.get(0, index);
-                if ( childIndex[2] != -1 ){
-                    Imgproc.drawContours(src, contours, (int)childIndex[2], new Scalar(0, 0 , 255, 255),2);
-                }
-            }
-        } // drawing the contours
-
-        return finalResult;
+        return contours;
     }
 
-    public void runOCR(Mat src){
-        Mat smoothed = new Mat();
-        Imgproc.GaussianBlur(src, smoothed, new Size(5, 5), 0);
+        private double getMeanWidth(Point[] verticesOfPoly) {
+        double topWidth = Math.abs( verticesOfPoly[0].x - verticesOfPoly[3].x );
+        double bottomWidth = Math.abs( verticesOfPoly[1].x - verticesOfPoly[2].x );
+        return (topWidth + bottomWidth) / 2;
+    }
+
+    private double getMeanHeight(Point[] verticesOfPoly) {
+        double leftHeight = Math.abs( verticesOfPoly[3].y - verticesOfPoly[2].y );
+        double rightHeight = Math.abs( verticesOfPoly[1].y - verticesOfPoly[0].y );
+        return (leftHeight + rightHeight) / 2;
+    }
+
+
+    private double getRotationAngle(RotatedRect rotatedRect) {
+        double angle = rotatedRect.angle;
+        if (angle < -45.) {
+            angle += 90.;
+        }
+        return angle;
+    }
+
+                private double getRectWidth(double[] lengthArray) {
+                double rectWidth = lengthArray[0];
+                for ( int r = 0; r < lengthArray.length ; r++ ) {
+                    if(lengthArray[r] <= rectWidth){
+                        rectWidth = lengthArray[r];
+                    }
+                }
+                return rectWidth;
+            }
+
+            private double getRectHeight(double[] lengthArray) {
+                double rectHeight = lengthArray[0];
+                for ( int r = 0; r < lengthArray.length ; r++ ) {
+                    if(lengthArray[r] >= rectHeight){
+                        rectHeight = lengthArray[r];
+                    }
+                }
+                return rectHeight;
+            }
+
+    private double[] getRectSidesLengthArray(Point[] verticesOfPoly) {
+        double[] lengthArray = new double[4];
+        for ( int r = 0; r < verticesOfPoly.length ; r++){
+            double x1 = verticesOfPoly[r].x;
+            double y1 = verticesOfPoly[r].y;
+            double x2 = verticesOfPoly[(r+1) % verticesOfPoly.length].x;
+            double y2 = verticesOfPoly[(r+1) % verticesOfPoly.length].y;
+
+            double length = Math.sqrt(Math.pow((x1-x2),2) + Math.pow((y1-y2),2));
+            lengthArray[r] = length;
+        }
+        return lengthArray;
+    }
+
+    @NonNull
+    private Point getRectangleCenter(Point tl, Point tr, Point bl, Point br) {
+        double m1 = (tl.y - br.y)/(tl.x - br.x);
+        double c1 = (-br.x) * m1 + br.y;
+
+        double m2 = (tr.y - bl.y)/(tr.x - bl.x);
+        double c2 = (-bl.x) * m2 + bl.y;
+
+        double x = (c1-c2)/(m2-m1);
+        double y = (x * m1) + c1;
+
+        return new Point(x,y);
+    }
+
+    public ArrayList<SpannableString> runOCR(Mat src){
+        Mat gray = new Mat();
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY);
         Mat thres = new Mat();
-        Imgproc.threshold(src, thres, 64, 255, Imgproc.THRESH_OTSU);
+        Imgproc.threshold(gray, thres, 32, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
-        displayBitmap(R.id.testImage2, getBitmapFromMat(src));
+        displayBitmap(R.id.testImage, getBitmapFromMat(thres));
 
-        mTess.setImage(getBitmapFromMat(src));
-        mTess.getUTF8Text();;
+        mTess.setImage(getBitmapFromMat(thres));
+        mTess.getUTF8Text();
 
         ResultIterator resultIterator = mTess.getResultIterator();
 
         SpannableString whiteSpace = new SpannableString(" ");
 
-        SpannableStringBuilder spannableParagraph = new SpannableStringBuilder();
-        int count = 0;
-        while (resultIterator.next(TessBaseAPI.PageIteratorLevel.RIL_WORD)){
-            String wordString = resultIterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_WORD);
+        ArrayList<SpannableString> spannableParagraph = new ArrayList<>();
+        SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder();
+        while (resultIterator.next(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE)){
+            String wordString = resultIterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE);
+
             SpannableString spannableWordString = new SpannableString(wordString);
-            Rect wordBoundingRect = resultIterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_WORD);
+            Rect wordBoundingRect = resultIterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE);
             org.opencv.core.Rect wordOpencvRect = new org.opencv.core.Rect(new Point(wordBoundingRect.left, wordBoundingRect.top),
                                                                            new Point(wordBoundingRect.right, wordBoundingRect.bottom));
 
@@ -307,28 +407,99 @@ public class OcrActivity extends AppCompatActivity {
 //            if( detectItalicStyle(src, wordBoundingRect) == true ){
 //                spannableWordString.setSpan(new StyleSpan(Typeface.ITALIC), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 //            }
-
+//
 //            int minLengthOfLine = (int)(wordOpencvRect.width * 0.8);
 //            if( foundUnderLine(src.submat(wordOpencvRect), minLengthOfLine) ){
 //                spannableWordString.setSpan(new UnderlineSpan(), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 //                Imgproc.rectangle(src, wordOpencvRect.tl(), wordOpencvRect.br(), new Scalar(255, 0, 0, 255), 5);
 //            }
 
-            if (count == 0 ){
-                spannableWordString.setSpan(new LeadingMarginSpan.Standard(50, 0), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
+//            if (count == 0 ){
+//                spannableWordString.setSpan(new LeadingMarginSpan.Standard(50, 0), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+//            }
 
             Imgproc.rectangle(src, wordOpencvRect.tl(), wordOpencvRect.br(), new Scalar(0,0,255,255), 5);
-            spannableParagraph.append(spannableWordString);
-            spannableParagraph.append(whiteSpace);
-            count++;
+            spannableParagraph.add(spannableWordString);
+            spannableStringBuilder.append(spannableWordString);
+        }
+        displayBitmap(R.id.testImage, getBitmapFromMat(src));
+        TextView textView = findViewById(R.id.ocrText1);
+        textView.setText(spannableStringBuilder);
+
+        return spannableParagraph;
+    }
+
+    private void displayOcrString(ArrayList<SpannableString> spannableStrings, int viewId){
+        SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder();
+        for (SpannableString s : spannableStrings){
+            spannableStringBuilder.append(s);
+        }
+        TextView tv = findViewById(viewId);
+        tv.setText(spannableStringBuilder);
+    }
+
+    private void setSectionTitle(ArrayList<SpannableString> contentList, ArrayList<SpannableString> paragraph){
+        TextView tv = findViewById(R.id.text);
+
+        SpannableStringBuilder s = new SpannableStringBuilder();
+        s.append(paragraph.get(0));
+        tv.setText(s);
+
+        for ( SpannableString word : paragraph ){
+            String wordString = word.toString().replace(" ", "").toLowerCase();
+            String textStringInTextline = getTextStringFromTextline(wordString);
+
+            for ( SpannableString contentTitle : contentList ){
+                String contentTitleString = contentTitle.toString().replace(" ", "").toLowerCase();
+
+                if ( contentTitleString.contains(textStringInTextline) ) {
+                    contentTitle.setSpan(new StyleSpan(Typeface.BOLD), 0, contentTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                }
+            }
+        }
+    }
+
+    private String getNumStringFromTextline(String wordString) {
+        int startIndex = -1;
+        int endIndex = -1;
+        for (int i = 0 ; i< wordString.length(); i++){
+            int in = wordString.charAt(i);
+            if ( 48 <= in && in <= 57 ){
+                if ( startIndex == -1 ){
+                    startIndex = i;
+                } else {
+                    endIndex = i + 1;
+                }
+            }
         }
 
+        if ( startIndex != -1 && endIndex != -1) {
+            String numString = wordString.substring(startIndex, endIndex);
+            return numString;
+        }
+        return null;
+    }
 
-        displayBitmap(R.id.testImage, getBitmapFromMat(src));
-
-        TextView tv = findViewById(R.id.text);
-        tv.setText(spannableParagraph);
+    private String getTextStringFromTextline(String wordString) {
+        int startIndex = -1;
+        int endIndex = -1;
+        for (int i = 0 ; i< wordString.length(); i++){
+            int in = wordString.charAt(i);
+            if ( 97 <= in && in <= 122 ){
+                if ( startIndex == -1 ){
+                    startIndex = i;
+                }
+                if ( startIndex != -1){
+                    endIndex = i + 1;
+                }
+            }
+        }
+        if ( startIndex != -1 && endIndex != -1) {
+            String textString = wordString.substring(startIndex, endIndex);
+            return textString;
+        }
+        return wordString;
     }
 
     public boolean foundUnderLine(Mat src, int minLengthOfLine){
@@ -539,52 +710,26 @@ public class OcrActivity extends AppCompatActivity {
         Mat gray = new Mat();
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGB2GRAY);
 
-        Mat b_blur = new Mat();
-        Imgproc.bilateralFilter(gray, b_blur, 9, 60,60);
+        Mat blur = new Mat();
+        Imgproc.bilateralFilter(gray, blur, 5, 80, 80);
 
-        Mat canny = new Mat();
-        Imgproc.Canny(b_blur, canny, 30, 80);
-
-        Mat closing = new Mat();
-        Mat closingKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5,3));
-        Imgproc.morphologyEx(canny, closing, Imgproc.MORPH_CLOSE, closingKernel, new Point(-1,-1), 1);
-
-        Mat erodeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3,3));
-        Mat erode = new Mat();
-        Imgproc.morphologyEx(closing, erode, Imgproc.MORPH_ERODE, erodeKernel, new Point(-1,-1), 1);
-
-//        Mat erode = new Mat();
-//        Mat erodeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2,1));
-//        Imgproc.erode(canny, erode, erodeKernel);
+        Mat thres = new Mat();
+        Imgproc.threshold(blur, thres, 32, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);
 
         Mat dilate = new Mat();
-//        Mat aggressiveDilateKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(25,2));
-//        Imgproc.dilate(erode, dilate, aggressiveDilateKernel);
-//
-//        Imgproc.medianBlur(dilate, dilate, 5);
-//
-//        Mat erodeKernel2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(1,7));
-//        Imgproc.erode(dilate, dilate, erodeKernel2);
-//
         Mat aggressiveDilateKernel2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(25,80));
-        Imgproc.dilate(erode, dilate, aggressiveDilateKernel2);
-//
-//        Mat erodeKernel_2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(25,15));
-//        Imgproc.erode(dilate, dilate, erodeKernel_2);
+        Imgproc.dilate(thres, dilate, aggressiveDilateKernel2);
 
-
-//
-//        displayBitmap(R.id.testImage, getBitmapFromMat(erode));
         ArrayList<MatOfPoint> contour_list = new ArrayList<>();
-        Imgproc.findContours(dilate, contour_list, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE );
+        Imgproc.findContours(dilate, contour_list, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE );
 
         MatOfPoint textBlockContour = getLargestContourMat(contour_list);
 
         org.opencv.core.Rect rect = Imgproc.boundingRect(textBlockContour);
 
         Mat result = src.submat(rect);
-//
-//        displayBitmap(R.id.testImage4, getBitmapFromMat(result));
+
+//        displayBitmap(R.id.testImage4, getBitmapFromMat(dilate));
         return result;
     } // may be deprecated
 
