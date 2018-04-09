@@ -14,23 +14,16 @@
         <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:padding="40sp"
+            android:background="#FFFFFF">
 
-            <RelativeLayout
+            <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/CON"
-                    android:textSize="18dp"
-                    android:layout_centerVertical="true"
-                    android:layout_centerHorizontal="true"
-                    android:background="#dedede"
-                    android:textColor="#000000" />
-            </RelativeLayout>
+                android:gravity="center"
+                android:text="Button"
+                android:id="@+id/button"/>
 
             <!-- src image -->
             <RelativeLayout
@@ -111,14 +104,32 @@
             </RelativeLayout>
 
             <!-- OCR text -->
+            <!--<RelativeLayout-->
+                <!--android:layout_width="match_parent"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:background="#FFFFFF"-->
+                <!--android:layout_margin="0dp">-->
+
+                <!--<TextView-->
+                    <!--android:id="@+id/text"-->
+                    <!--android:layout_width="match_parent"-->
+                    <!--android:layout_height="wrap_content"-->
+                    <!--android:layout_centerHorizontal="true"-->
+                    <!--android:layout_centerVertical="true"-->
+                    <!--android:background="#888888"-->
+                    <!--android:fontFamily="@font/b_regular"-->
+                    <!--android:textAppearance="@style/customFontstyle"-->
+                    <!--android:lineSpacingExtra="10sp"/>-->
+            <!--</RelativeLayout>-->
+
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF"
+                android:background="#888888"
                 android:layout_margin="0dp">
 
                 <TextView
-                    android:id="@+id/text"
+                    android:id="@+id/title1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_centerHorizontal="true"
@@ -127,17 +138,20 @@
                     android:fontFamily="@font/b_regular"
                     android:textAppearance="@style/customFontstyle"
                     android:lineSpacingExtra="10sp"
-                    android:padding="40dp"/>
+                    android:gravity="center"
+                    android:paddingBottom="20sp"
+                    android:textIsSelectable="true"/>
+
             </RelativeLayout>
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF"
+                android:background="#888888"
                 android:layout_margin="0dp">
 
                 <TextView
-                    android:id="@+id/ocrText1"
+                    android:id="@+id/body1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_centerHorizontal="true"
@@ -146,17 +160,19 @@
                     android:fontFamily="@font/b_regular"
                     android:textAppearance="@style/customFontstyle"
                     android:lineSpacingExtra="10sp"
-                    android:padding="40dp"/>
+                    android:gravity="left"
+                    android:textIsSelectable="true"/>
+
             </RelativeLayout>
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF"
+                android:background="#888888"
                 android:layout_margin="0dp">
 
                 <TextView
-                    android:id="@+id/ocrText2"
+                    android:id="@+id/pageNumber1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_centerHorizontal="true"
@@ -165,8 +181,31 @@
                     android:fontFamily="@font/b_regular"
                     android:textAppearance="@style/customFontstyle"
                     android:lineSpacingExtra="10sp"
-                    android:padding="40dp"/>
+                    android:gravity="center"
+                    android:paddingTop="20sp"
+                    android:textIsSelectable="true"/>
+
             </RelativeLayout>
+
+
+            <!--<RelativeLayout-->
+                <!--android:layout_width="match_parent"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:background="#888888"-->
+                <!--android:layout_margin="0dp">-->
+
+                <!--<TextView-->
+                    <!--android:id="@+id/ocrText2"-->
+                    <!--android:layout_width="match_parent"-->
+                    <!--android:layout_height="wrap_content"-->
+                    <!--android:layout_centerHorizontal="true"-->
+                    <!--android:layout_centerVertical="true"-->
+                    <!--android:background="#888888"-->
+                    <!--android:fontFamily="@font/b_regular"-->
+                    <!--android:textAppearance="@style/customFontstyle"-->
+                    <!--android:lineSpacingExtra="10sp"/>-->
+            <!--</RelativeLayout>-->
+
         </LinearLayout>
     </ScrollView>
 

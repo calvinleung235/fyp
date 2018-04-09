@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/ammendText"
+        android:orderInCategory="10"
+        android:title="Ammend Text"
+        app:showAsAction="ifRoom"
+        />
+    <item
+        android:id="@+id/bold"
+        android:orderInCategory="101"
+        android:title="Bold"
+        app:showAsAction="ifRoom"
+        />
+    <item
+        android:id="@+id/italic"
+        android:orderInCategory="102"
+        android:title="Italic"
+        app:showAsAction="ifRoom"
+        />
+    <item
+        android:id="@+id/underline"
+        android:orderInCategory="103"
+        android:title="Underline"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/reset"
+        android:orderInCategory="103"
+        android:title="Reset"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/delete"
+        android:orderInCategory="103"
+        android:title="Delete"
+        app:showAsAction="never"/>
+
+
+</menu>
