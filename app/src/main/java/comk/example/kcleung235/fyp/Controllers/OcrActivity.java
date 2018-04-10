@@ -1,29 +1,18 @@
-package comk.example.kcleung235.fyp;
+package comk.example.kcleung235.fyp.Controllers;
 
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
-import android.graphics.Typeface;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
-import android.text.style.CharacterStyle;
-import android.text.style.StyleSpan;
+import android.text.style.LeadingMarginSpan;
 import android.text.style.UnderlineSpan;
-import android.view.ActionMode;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -54,18 +43,16 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import comk.example.kcleung235.fyp.Models.DisplayTextProcessor;
+import comk.example.kcleung235.fyp.Models.OcrString;
+import comk.example.kcleung235.fyp.R;
+
 public class OcrActivity extends AppCompatActivity{
 
     Bitmap image;
     Bitmap image2;
     private TessBaseAPI mTess;
     String datapath = "";
-    TextView body;
-    TextView title;
-    TextView pageNum;
-    SpannableStringBuilder titleText;
-    SpannableStringBuilder bodyText;
-    SpannableStringBuilder pageNumText;
 
     DisplayTextProcessor displayTextProcessor = new DisplayTextProcessor();
 
@@ -96,7 +83,7 @@ public class OcrActivity extends AppCompatActivity{
         Mat para = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(image2)));
         Mat content = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(image)));
 
-        final ArrayList<SpannableString> contentString = runOCR(content, TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE, R.id.testImage);
+        final ArrayList<SpannableString> contentString = runContentPageOCR(content, TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE, R.id.testImage);
         final ArrayList<SpannableString> paragraphString = runOCR(para, TessBaseAPI.PageIteratorLevel.RIL_WORD, R.id.testImage2);
 
         final SpannableStringBuilder titleText = displayTextProcessor.getTitleText(contentString, paragraphString);
@@ -113,6 +100,7 @@ public class OcrActivity extends AppCompatActivity{
                 startActivity(intent);
             }
         });
+        
     }
 
     public ArrayList<SpannableString> runOCR(Mat src, int pageIterateLevel, int id){
@@ -131,232 +119,89 @@ public class OcrActivity extends AppCompatActivity{
 
         ArrayList<SpannableString> spannableParagraph = new ArrayList<>();
         ResultIterator resultIterator = mTess.getResultIterator();
+
+        resultIterator.begin();
+        Rect previousTextlineBoundingRect = null;
+        double meanLeftIndent = 0;
+        int count = 0;
+        while ( resultIterator.next(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE) ) {
+            Rect textlineRect = resultIterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE);
+            if ((textlineRect.height() * textlineRect.width()) < 10 * 10) continue;
+
+            if (previousTextlineBoundingRect != null){
+                meanLeftIndent += textlineRect.left;
+                count++;
+            }
+            previousTextlineBoundingRect = textlineRect;
+        }
+
+        meanLeftIndent = meanLeftIndent/count;
+
+        resultIterator.begin();
+        Rect previousWordBoundingRect = null;
         while (resultIterator.next(pageIterateLevel)){
 
-//                        if( detectBoldStyle(src, wordBoundingRect) == true ){
-//                            spannableWordString.setSpan(new StyleSpan(Typeface.BOLD), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-//                        }
-//
-//                        if( detectItalicStyle(src, wordBoundingRect) == true ){
-//                            spannableWordString.setSpan(new StyleSpan(Typeface.ITALIC), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-//                        }
+            Rect wordRect = resultIterator.getBoundingRect(pageIterateLevel);
+            if ((wordRect.height() * wordRect.width()) < 10 * 10){
+                continue;
+            }
 
-            Rect wordBoundingRect = resultIterator.getBoundingRect(pageIterateLevel);
-            org.opencv.core.Rect wordOpencvRect = new org.opencv.core.Rect(new Point(wordBoundingRect.left, wordBoundingRect.top),
-                    new Point(wordBoundingRect.right, wordBoundingRect.bottom));
+            Point tl =new Point(wordRect.left, wordRect.top);
+            Point br =new Point(wordRect.right, wordRect.bottom);
+
+            Imgproc.rectangle(src, tl, br , new Scalar(0,0,255,255),5);
 
             String wordString = resultIterator.getUTF8Text(pageIterateLevel);
             SpannableString spannableString = new SpannableString(wordString);
+            if (previousWordBoundingRect != null){
+                if (previousWordBoundingRect.bottom < wordRect.top && wordRect.left > meanLeftIndent && wordRect.left < previousWordBoundingRect.right){
+                    spannableString = new SpannableString("\n" + wordString);
+                    spannableString.setSpan(new LeadingMarginSpan.Standard(80, 0), 0, spannableString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
 
+            org.opencv.core.Rect wordOpencvRect = new org.opencv.core.Rect(new Point(wordRect.left, wordRect.top), new Point(wordRect.right, wordRect.bottom));
             if( foundUnderLine(thres, wordOpencvRect) ){
                 spannableString.setSpan(new UnderlineSpan(), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 Imgproc.rectangle(src, wordOpencvRect.tl(), wordOpencvRect.br(), new Scalar(255, 0, 0, 255), 5);
             }
 
-            Imgproc.rectangle(src, wordOpencvRect.tl(), wordOpencvRect.br(), new Scalar(0,0,255,255), 5);
             spannableParagraph.add(spannableString);
+            previousWordBoundingRect = wordRect;
         }
 
         displayBitmap(id, getBitmapFromMat(src));
         return spannableParagraph;
     }
 
+    public ArrayList<SpannableString> runContentPageOCR(Mat src, int pageIterateLevel, int id){
+        Mat smoothed = new Mat();
+        Imgproc.GaussianBlur(src, smoothed, new Size(5, 5), 0,0);
 
-    private SpannableStringBuilder getTitle(ArrayList<SpannableString> strings, int PageNumIndex){
-        String title = "";
+        Mat gray = new Mat(src.size(), CvType.CV_32FC1);
+        Imgproc.cvtColor(smoothed, gray, Imgproc.COLOR_RGB2GRAY);
 
-        if (PageNumIndex != -1) {
-            for (int i = 0; i < PageNumIndex; i++) {
-                title += strings.get(i).toString() + " ";
+        Mat thres = new Mat(gray.size(), CvType.CV_32FC1);
+        Imgproc.threshold(gray, thres, 128, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+        mTess.setImage(getBitmapFromMat(thres));
+        mTess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO);
+        mTess.getUTF8Text();
+
+        ArrayList<SpannableString> spannableParagraph = new ArrayList<>();
+        ResultIterator resultIterator = mTess.getResultIterator();
+
+        resultIterator.begin();
+        while (resultIterator.next(pageIterateLevel)){
+            Rect wordRect = resultIterator.getBoundingRect(pageIterateLevel);
+            if ((wordRect.height() * wordRect.width()) < 10 * 10){
+                continue;
             }
+            String wordString = resultIterator.getUTF8Text(pageIterateLevel);
+            SpannableString spannableString = new SpannableString(wordString);
+            spannableParagraph.add(spannableString);
         }
-        return new SpannableStringBuilder(title.substring(0, title.length()));
-    }
-
-
-    private SpannableStringBuilder getBodyString ( ArrayList<SpannableString> paragraphStrings, int PageNumIndex){
-        SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder();
-        for ( int i = 0; i < paragraphStrings.size() ; i++ ){
-            if (i <= PageNumIndex) continue;
-
-            spannableStringBuilder.append(paragraphStrings.get(i));
-            spannableStringBuilder.append(" ");
-        }
-
-        return spannableStringBuilder;
-    }
-
-    private String computeSectionTitle(ArrayList<String> contentList, ArrayList<String> paragraph){
-        ArrayList<Integer> titleIndexList = new ArrayList<>();
-        String title = "";
-
-        for ( int i = 0; i < contentList.size(); i++ ){
-            String titleString = getTextStringFromTextline(contentList.get(i).replace(" ", ""));
-            TextView tv = findViewById(R.id.body);
-            tv.setText(titleString);
-
-            for ( int j = 0; j < paragraph.size(); j++ ){
-                String currentParagraphWord = getTextStringFromTextline(paragraph.get(j));
-
-                if ( titleString.contains(currentParagraphWord) ) {
-                    if (titleIndexList.isEmpty()){
-                        title += currentParagraphWord;
-                        titleIndexList.add(j);
-                        continue;
-                    }
-
-                    String lastWordInTitleString = paragraph.get(titleIndexList.get(titleIndexList.size()-1));
-                    lastWordInTitleString = getTextStringFromTextline(lastWordInTitleString);
-                    boolean inTitleContinuous = (titleString.indexOf(currentParagraphWord) > titleString.indexOf(lastWordInTitleString));
-
-                    int currentIndex = j;
-                    int indexOfLastTitleWordInPara = titleIndexList.get(titleIndexList.size()-1);
-                    boolean inParaContinuous = (currentIndex - indexOfLastTitleWordInPara == 1);
-
-                    boolean duplicated = false;
-                    for (int k = 0; k < titleIndexList.size() ; k++){
-                        int index = titleIndexList.get(k);
-                        String retrievedTitleWord = paragraph.get(index);
-                        retrievedTitleWord = getTextStringFromTextline(retrievedTitleWord);
-
-                        duplicated = retrievedTitleWord.equals(currentParagraphWord);
-                    }
-
-                    if (!duplicated && inTitleContinuous && inParaContinuous) {
-                        title += currentParagraphWord;
-                        titleIndexList.add(j);
-                    }
-                }
-            }
-
-            if (titleString.equals(title)) {
-//                TextView tv1 = findViewById(R.id.ocrText2);
-//                tv1.setText(title);
-                break;
-            }
-            else {
-                title = "";
-                titleIndexList.clear();
-            }
-        }
-
-        for (int x = 0; x < titleIndexList.size(); x++){
-            paragraph.remove(titleIndexList.get(x));
-        }
-        return title;
-    }
-
-
-    private int getPageNumberIndex(ArrayList<SpannableString> contentList, ArrayList<SpannableString> paragraphString) {
-        String pageNume = "";
-        for (int i = 0; i < contentList.size() - 1; i++) {
-            String contentSectionString = contentList.get(i).toString();
-
-            String sectionPageNum = getNumStringFromTextline(contentSectionString);
-
-            pageNume += sectionPageNum + " ";
-
-            String nextContenSectionString = contentList.get(i + 1).toString();
-            String nextSectionPageNum = getNumStringFromTextline(nextContenSectionString);
-
-            pageNume += nextSectionPageNum + "\n";
-
-            for (int j = 0; j < paragraphString.size(); j++) {
-                String pageString = paragraphString.get(j).toString();
-                String pageNumString = getNumStringFromTextline(pageString);
-
-                if (pageNumString != null && sectionPageNum != null && nextSectionPageNum != null) {
-                    if (Integer.valueOf(pageNumString) >= Integer.valueOf(sectionPageNum)
-                            && Integer.valueOf(pageNumString) < Integer.valueOf(nextSectionPageNum)) {
-
-                        body.setText(String.valueOf(j) + " success " + paragraphString.get(j));
-                        return j;
-                    }
-                }
-            }
-        }
-        body.setText(pageNume);
-        return -1;
-    }
-
-    private String getNumStringFromTextline(String srcWordString) {
-        int startIndex = -1;
-        int endIndex = -1;
-
-        String wordString = srcWordString.toLowerCase().replace(" ", "");
-
-        for (int i = 0 ; i< wordString.length(); i++){
-            if ( isNum(wordString.charAt(i)) ){
-                if ( startIndex == -1 ){
-                    startIndex = i;
-                }
-                else if ( consistText(wordString, startIndex, i) ){
-                    startIndex = i;
-                }
-                else {
-                    endIndex = i + 1;
-                }
-            } else {
-                wordString.replace(wordString.charAt(i), 'X');
-            }
-        }
-
-        if ( startIndex != -1 && endIndex != -1) {
-            String numString = wordString.substring(startIndex, endIndex);
-
-            if (consistText(numString, 0, numString.length())) {
-                return null;
-            }
-
-            return numString;
-        }
-        return null;
-    }
-
-    private boolean isNum(char c){
-        if (c >= '0' && c <= '9' ){
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private boolean consistText(String arr, int startIndex, int currentIndex){
-        for ( int i = startIndex ; i < currentIndex ; i++){
-            if ( !isNum(arr.charAt(i)) ){
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private String getTextStringFromTextline(String srcWordString) {
-        int startIndex = -1;
-        int endIndex = -1;
-
-        String wordString = srcWordString.toLowerCase();
-
-        for (int i = 0 ; i< wordString.length(); i++){
-            char in = wordString.charAt(i);
-            if ( in >= 'a' && in <= 'z' ){
-                if ( startIndex == -1 ){
-                    startIndex = i;
-                }
-                if ( startIndex != -1){
-                    endIndex = i + 1;
-                }
-            } else {
-                wordString.replace(wordString.charAt(i), ' ');
-            }
-        }
-
-        if ( startIndex != -1 && endIndex != -1) {
-            String textString = wordString.substring(startIndex, endIndex).replace(" ", "");
-            return textString;
-        }
-
-        return "";
+        return spannableParagraph;
     }
 
     public Bitmap getBitmapFromMat(Mat src){
@@ -434,9 +279,9 @@ public class OcrActivity extends AppCompatActivity{
     private double findMax( double[] arr) {
         double max = 0;
 
-        for (int i = 0; i < arr.length ;i++){
-            if (arr[i] >= max){
-                max = arr[i];
+        for ( double i : arr){
+            if (i >= max){
+                max = i;
             }
         }
         return max;
@@ -634,19 +479,6 @@ public class OcrActivity extends AppCompatActivity{
         Imgproc.HoughLinesP(edges, lines, 1, Math.PI/180, 50, minLengthOfLine, 3);
 
         if ( !lines.empty() ){
-//            for(int i = 0; i < lines.rows(); i++) {
-//                for (int j = 0; j < lines.cols(); j++) {
-//                    double[] lineCoordinates = lines.get(i, j);
-//                    double lineStartPointXCoodinate = lineCoordinates[0],
-//                            lineStartPointyCoodinate = lineCoordinates[1],
-//                            lineEndPointXCoodinate = lineCoordinates[2],
-//                            lineEndPointyCoodinate = lineCoordinates[3];
-//
-//                    Point lineStartingPoint = new Point(lineStartPointXCoodinate, lineStartPointyCoodinate);
-//                    Point lineEndingPoint = new Point(lineEndPointXCoodinate, lineEndPointyCoodinate);
-//                    Imgproc.line(gray, lineStartingPoint, lineEndingPoint, new Scalar(0,255,255,255), 10);
-//                }
-//            } // drawing
             return true;
         } else {
             return false;

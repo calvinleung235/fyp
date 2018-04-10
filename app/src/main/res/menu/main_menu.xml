@@ -4,7 +4,7 @@
 
     <item
         android:id="@+id/ammendText"
-        android:orderInCategory="10"
+        android:orderInCategory="100"
         android:title="Ammend Text"
         app:showAsAction="ifRoom"
         />
@@ -28,14 +28,20 @@
 
     <item
         android:id="@+id/reset"
-        android:orderInCategory="103"
+        android:orderInCategory="104"
         android:title="Reset"
         app:showAsAction="never"/>
 
     <item
         android:id="@+id/delete"
-        android:orderInCategory="103"
+        android:orderInCategory="105"
         android:title="Delete"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/newParagraph"
+        android:orderInCategory="106"
+        android:title="New Paragraph"
         app:showAsAction="never"/>
 
 

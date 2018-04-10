@@ -1,4 +1,4 @@
-package comk.example.kcleung235.fyp;
+package comk.example.kcleung235.fyp.Controllers;
 
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.CharacterStyle;
+import android.text.style.LeadingMarginSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 import android.view.ActionMode;
@@ -15,8 +16,13 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class ResultActivity extends AppCompatActivity implements ExampleDialog.ExampleDialogListener{
+import comk.example.kcleung235.fyp.Models.AmmendTextDialog;
+import comk.example.kcleung235.fyp.Models.OcrString;
+import comk.example.kcleung235.fyp.R;
+
+public class ResultActivity extends AppCompatActivity implements AmmendTextDialog.AmmendTextDialogListener {
 
     TextView body;
     TextView title;
@@ -80,7 +86,7 @@ public class ResultActivity extends AppCompatActivity implements ExampleDialog.E
                         FragmentManager fragmentManager = getFragmentManager();
                         FragmentTransaction ft = fragmentManager.beginTransaction();
 
-                        ExampleDialog dialog = new ExampleDialog();
+                        AmmendTextDialog dialog = new AmmendTextDialog();
                         dialog.setArguments(bundle);
                         dialog.show(getSupportFragmentManager(), "dialog");
 
@@ -204,6 +210,7 @@ public class ResultActivity extends AppCompatActivity implements ExampleDialog.E
                             } else {
                                 titleText.delete(selStart, selEnd);
                             }
+                            currentTextView.setText(titleText);
                         } else if ( currentTextView == body ){
                             if (bodyText.subSequence(selEnd, selEnd+1).equals(" ")){
                                 bodyText.delete(selStart, selEnd+1);
@@ -222,6 +229,21 @@ public class ResultActivity extends AppCompatActivity implements ExampleDialog.E
                         actionMode.finish();
                         return true;
                     }
+                    case R.id.newParagraph:{
+                        TextView currentTextView = (TextView)getCurrentFocus();
+                        final int selStart = currentTextView.getSelectionStart();
+                        final int selEnd = currentTextView.getSelectionEnd();
+
+                        if ( currentTextView == body ){
+                            bodyText.setSpan(new LeadingMarginSpan.Standard(80,0), selStart, selEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            bodyText.insert(selStart, "\n");
+                            currentTextView.setText(bodyText);
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Only Available on body text", Toast.LENGTH_SHORT);
+                        }
+                        actionMode.finish();
+                        return true;
+                    }
                     default: return false;
                 }
             }
@@ -232,6 +254,10 @@ public class ResultActivity extends AppCompatActivity implements ExampleDialog.E
         title.setCustomSelectionActionModeCallback(callback);
         body.setCustomSelectionActionModeCallback(callback);
         pageNum.setCustomSelectionActionModeCallback(callback);
+
+        getSupportActionBar().setTitle("Result Correction");
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
     @Override
@@ -249,5 +275,17 @@ public class ResultActivity extends AppCompatActivity implements ExampleDialog.E
             pageNumText.replace(selStart, selEnd, text);
             pageNum.setText(pageNumText);
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+
+        if (id == android.R.id.home){
+            this.finish();
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 }

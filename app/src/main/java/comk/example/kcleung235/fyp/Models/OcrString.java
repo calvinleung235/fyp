@@ -1,13 +1,9 @@
-package comk.example.kcleung235.fyp;
+package comk.example.kcleung235.fyp.Models;
 
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
-
-/**
- * Created by calvinleung on 9/4/2018.
- */
 
 public class OcrString implements Parcelable{
     private SpannableStringBuilder titleText;
@@ -40,15 +36,15 @@ public class OcrString implements Parcelable{
 
     public SpannableStringBuilder getTitleText() { return titleText; }
 
-    public void setTitleText(SpannableStringBuilder titleText) { this.titleText = titleText; }
-
     public SpannableStringBuilder getBodyText() {
         return bodyText;
     }
 
-    public void setBodyText(SpannableStringBuilder bodyText) { this.bodyText = bodyText; }
-
     public SpannableStringBuilder getPageNumText() { return pageNumText; }
+
+    public void setTitleText(SpannableStringBuilder titleText) { this.titleText = titleText; }
+
+    public void setBodyText(SpannableStringBuilder bodyText) { this.bodyText = bodyText; }
 
     public void setPageNumText(SpannableStringBuilder pageNumText) { this.pageNumText = pageNumText; }
 

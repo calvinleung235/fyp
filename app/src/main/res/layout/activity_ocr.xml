@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".OcrActivity"
+    tools:context=".Controllers.OcrActivity"
     android:weightSum="1">
 
     <ScrollView
@@ -102,25 +102,6 @@
                     android:background="#dedede"
                     android:textColor="#a3a3a3" />
             </RelativeLayout>
-
-            <!-- OCR text -->
-            <!--<RelativeLayout-->
-                <!--android:layout_width="match_parent"-->
-                <!--android:layout_height="wrap_content"-->
-                <!--android:background="#FFFFFF"-->
-                <!--android:layout_margin="0dp">-->
-
-                <!--<TextView-->
-                    <!--android:id="@+id/text"-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="wrap_content"-->
-                    <!--android:layout_centerHorizontal="true"-->
-                    <!--android:layout_centerVertical="true"-->
-                    <!--android:background="#888888"-->
-                    <!--android:fontFamily="@font/b_regular"-->
-                    <!--android:textAppearance="@style/customFontstyle"-->
-                    <!--android:lineSpacingExtra="10sp"/>-->
-            <!--</RelativeLayout>-->
 
             <RelativeLayout
                 android:layout_width="match_parent"

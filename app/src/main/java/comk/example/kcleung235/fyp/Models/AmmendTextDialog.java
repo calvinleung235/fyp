@@ -1,4 +1,4 @@
-package comk.example.kcleung235.fyp;
+package comk.example.kcleung235.fyp.Models;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -6,21 +6,18 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatDialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import comk.example.kcleung235.fyp.R;
 
-public class ExampleDialog extends AppCompatDialogFragment {
+public class AmmendTextDialog extends AppCompatDialogFragment {
     private TextView text;
     private EditText editText;
-    private ExampleDialogListener listener;
+    private AmmendTextDialogListener listener;
 
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
@@ -29,8 +26,12 @@ public class ExampleDialog extends AppCompatDialogFragment {
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View mView = inflater.inflate(R.layout.edit_text_dialog,null);
 
-        editText = mView.findViewById(R.id.editText);
         final Bundle bundle = getArguments();
+        CharSequence charSequence = bundle.getCharSequence("selectedText");
+
+        editText = mView.findViewById(R.id.editText);
+        text = mView.findViewById(R.id.text);
+        text.setText(charSequence);
 
         builder.setView(mView)
                 .setNegativeButton("cancel", new DialogInterface.OnClickListener() {
@@ -49,10 +50,6 @@ public class ExampleDialog extends AppCompatDialogFragment {
                     }
                 });
 
-        CharSequence charSequence = bundle.getCharSequence("selectedText");
-        text = mView.findViewById(R.id.text);
-        text.setText(charSequence);
-
         return builder.create();
     }
 
@@ -60,10 +57,10 @@ public class ExampleDialog extends AppCompatDialogFragment {
     public void onAttach(Context context) {
         super.onAttach(context);
 
-        listener = (ExampleDialogListener) context;
+        listener = (AmmendTextDialogListener) context;
     }
 
-    public interface ExampleDialogListener{
+    public interface AmmendTextDialogListener {
         void applyText(String text, int selStart, int selEnd);
     }
 
