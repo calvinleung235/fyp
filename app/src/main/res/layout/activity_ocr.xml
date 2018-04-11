@@ -25,6 +25,15 @@
                 android:text="Button"
                 android:id="@+id/button"/>
 
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:progressBarStyleHorizontal"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="center"
+                android:progress="0"
+                android:progressDrawable="@drawable/circle" />
+
             <!-- src image -->
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -167,25 +176,6 @@
                     android:textIsSelectable="true"/>
 
             </RelativeLayout>
-
-
-            <!--<RelativeLayout-->
-                <!--android:layout_width="match_parent"-->
-                <!--android:layout_height="wrap_content"-->
-                <!--android:background="#888888"-->
-                <!--android:layout_margin="0dp">-->
-
-                <!--<TextView-->
-                    <!--android:id="@+id/ocrText2"-->
-                    <!--android:layout_width="match_parent"-->
-                    <!--android:layout_height="wrap_content"-->
-                    <!--android:layout_centerHorizontal="true"-->
-                    <!--android:layout_centerVertical="true"-->
-                    <!--android:background="#888888"-->
-                    <!--android:fontFamily="@font/b_regular"-->
-                    <!--android:textAppearance="@style/customFontstyle"-->
-                    <!--android:lineSpacingExtra="10sp"/>-->
-            <!--</RelativeLayout>-->
 
         </LinearLayout>
     </ScrollView>

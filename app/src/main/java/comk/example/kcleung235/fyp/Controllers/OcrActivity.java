@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -13,10 +14,11 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.UnderlineSpan;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.ProgressBar;
 
 import com.googlecode.tesseract.android.ResultIterator;
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -49,48 +51,28 @@ import comk.example.kcleung235.fyp.R;
 
 public class OcrActivity extends AppCompatActivity{
 
+    ImageView imageView;
+    Button button;
+    ProgressBar progressBar;
+
     Bitmap image;
-    Bitmap image2;
     private TessBaseAPI mTess;
     String datapath = "";
 
     DisplayTextProcessor displayTextProcessor = new DisplayTextProcessor();
+    SpannableStringBuilder titleText = new SpannableStringBuilder(" ");
+    SpannableStringBuilder bodyText = new SpannableStringBuilder(" ");
+    SpannableStringBuilder pageNumText = new SpannableStringBuilder(" ");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ocr);
+        button = findViewById(R.id.button);
+        imageView = findViewById(R.id.testImage);
+        progressBar = findViewById(R.id.progressBar);
 
-        //init image
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inScaled = false;
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.content, options);
-        image2 = BitmapFactory.decodeResource(getResources(), R.drawable.border7, options);
-
-        //initialize Tesseract API
-        String language = "eng";
-        datapath = getFilesDir()+ "/tesseract/";
-        mTess = new TessBaseAPI();
-
-        checkFile(new File(datapath + "tessdata/"));
-
-        mTess.init(datapath, language);
-        mTess.setVariable("language_model_penalty_non_dict_word", "1.0");
-        mTess.setVariable("language_model_penalty_non_freq_dict_word", "1.0");
-
-        OpenCVLoader.initDebug();
-
-        Mat para = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(image2)));
-        Mat content = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(image)));
-
-        final ArrayList<SpannableString> contentString = runContentPageOCR(content, TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE, R.id.testImage);
-        final ArrayList<SpannableString> paragraphString = runOCR(para, TessBaseAPI.PageIteratorLevel.RIL_WORD, R.id.testImage2);
-
-        final SpannableStringBuilder titleText = displayTextProcessor.getTitleText(contentString, paragraphString);
-        final SpannableStringBuilder bodyText = displayTextProcessor.getBodyText(contentString, paragraphString);
-        final SpannableStringBuilder pageNumText = displayTextProcessor.getPageNumText(contentString, paragraphString);
-
-        Button button = findViewById(R.id.button);
+        new BackgroundTask().execute();
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -100,10 +82,71 @@ public class OcrActivity extends AppCompatActivity{
                 startActivity(intent);
             }
         });
-        
+
+        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
-    public ArrayList<SpannableString> runOCR(Mat src, int pageIterateLevel, int id){
+    class BackgroundTask extends AsyncTask<Void, Integer, Bitmap>{
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+            final BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;
+            image = BitmapFactory.decodeResource(getResources(), R.drawable.content, options);
+            Bitmap cameraCapturedImage = BitmapFactory.decodeResource(getResources(), R.drawable.border7, options);
+            publishProgress(0, 5);
+
+            String language = "eng";
+            datapath = getFilesDir()+ "/tesseract/";
+            mTess = new TessBaseAPI();
+            checkFile(new File(datapath + "tessdata/"));
+            mTess.init(datapath, language);
+            mTess.setVariable("language_model_penalty_non_dict_word", "1.0");
+            mTess.setVariable("language_model_penalty_non_freq_dict_word", "1.0");
+            OpenCVLoader.initDebug();
+            publishProgress(5, 10);
+
+            Mat para = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(cameraCapturedImage)));
+            Mat content = computeTextBlockDeskew(approxPagePolygon(getMatFromBitmap(image)));
+            publishProgress(10, 40);
+
+            ArrayList<SpannableString> contentString = runContentPageOCR(content, TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE);
+            ArrayList<SpannableString> paragraphString = runOCR(para, TessBaseAPI.PageIteratorLevel.RIL_WORD);
+            publishProgress(40, 70);
+
+            titleText = displayTextProcessor.getTitleText(contentString, paragraphString);
+            bodyText = displayTextProcessor.getBodyText(contentString, paragraphString);
+            pageNumText = displayTextProcessor.getPageNumText(contentString, paragraphString);
+
+            publishProgress(70, 100);
+            return getBitmapFromMat(para);
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... done) {
+            for (int i = done[0]; i < done[1]; i++){
+                try {
+                    Thread.sleep(100);
+                    progressBar.setProgress(i, true);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (done[1] == 100){
+                progressBar.setVisibility(View.GONE);
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap paraImage) {
+            imageView.setImageBitmap(paraImage);
+        }
+    }
+
+
+    public ArrayList<SpannableString> runOCR(Mat src, int pageIterateLevel){
         Mat smoothed = new Mat();
         Imgproc.GaussianBlur(src, smoothed, new Size(5, 5), 0,0);
 
@@ -148,7 +191,6 @@ public class OcrActivity extends AppCompatActivity{
 
             Point tl =new Point(wordRect.left, wordRect.top);
             Point br =new Point(wordRect.right, wordRect.bottom);
-
             Imgproc.rectangle(src, tl, br , new Scalar(0,0,255,255),5);
 
             String wordString = resultIterator.getUTF8Text(pageIterateLevel);
@@ -163,18 +205,15 @@ public class OcrActivity extends AppCompatActivity{
             org.opencv.core.Rect wordOpencvRect = new org.opencv.core.Rect(new Point(wordRect.left, wordRect.top), new Point(wordRect.right, wordRect.bottom));
             if( foundUnderLine(thres, wordOpencvRect) ){
                 spannableString.setSpan(new UnderlineSpan(), 0, wordString.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                Imgproc.rectangle(src, wordOpencvRect.tl(), wordOpencvRect.br(), new Scalar(255, 0, 0, 255), 5);
             }
 
             spannableParagraph.add(spannableString);
             previousWordBoundingRect = wordRect;
         }
-
-        displayBitmap(id, getBitmapFromMat(src));
         return spannableParagraph;
     }
 
-    public ArrayList<SpannableString> runContentPageOCR(Mat src, int pageIterateLevel, int id){
+    public ArrayList<SpannableString> runContentPageOCR(Mat src, int pageIterateLevel){
         Mat smoothed = new Mat();
         Imgproc.GaussianBlur(src, smoothed, new Size(5, 5), 0,0);
 
@@ -563,6 +602,18 @@ public class OcrActivity extends AppCompatActivity{
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+
+        if (id == android.R.id.home){
+            this.finish();
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
 }
